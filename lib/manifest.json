@@ -1,0 +1,52 @@
+{
+  "job-ad": {
+    "general": [
+      "/designs/job-ad/photos/general/bg-01.jpg",
+      "/designs/job-ad/photos/general/bg-02.jpg",
+      "/designs/job-ad/photos/general/bg-03.jpg",
+      "/designs/job-ad/photos/general/bg-04.jpg",
+      "/designs/job-ad/photos/general/bg-05.jpg",
+      "/designs/job-ad/photos/general/bg-06.jpg",
+      "/designs/job-ad/photos/general/bg-07.jpg",
+      "/designs/job-ad/photos/general/bg-08.jpg",
+      "/designs/job-ad/photos/general/bg-09.jpg",
+      "/designs/job-ad/photos/general/bg-10.jpg",
+      "/designs/job-ad/photos/general/bg-11.jpg",
+      "/designs/job-ad/photos/general/bg-12.jpg",
+      "/designs/job-ad/photos/general/bg-13.jpg",
+      "/designs/job-ad/photos/general/bg-14.jpg",
+      "/designs/job-ad/photos/general/bg-15.jpg",
+      "/designs/job-ad/photos/general/bg-16.jpg",
+      "/designs/job-ad/photos/general/bg-17.jpg",
+      "/designs/job-ad/photos/general/bg-18.jpg",
+      "/designs/job-ad/photos/general/bg-19.jpg",
+      "/designs/job-ad/photos/general/bg-20.jpg",
+      "/designs/job-ad/photos/general/bg-21.jpg",
+      "/designs/job-ad/photos/general/bg-22.jpg",
+      "/designs/job-ad/photos/general/bg-23.jpg",
+      "/designs/job-ad/photos/general/bg-24.jpg",
+      "/designs/job-ad/photos/general/bg-25.jpg",
+      "/designs/job-ad/photos/general/bg-26.jpg",
+      "/designs/job-ad/photos/general/bg-27.jpg",
+      "/designs/job-ad/photos/general/bg-28.jpg",
+      "/designs/job-ad/photos/general/bg-29.jpg",
+      "/designs/job-ad/photos/general/bg-30.jpg",
+      "/designs/job-ad/photos/general/bg-31.jpg",
+      "/designs/job-ad/photos/general/bg-32.jpg",
+      "/designs/job-ad/photos/general/bg-33.jpg",
+      "/designs/job-ad/photos/general/bg-34.jpg",
+      "/designs/job-ad/photos/general/bg-35.jpg"
+    ],
+    "leadership-executive": [
+      "/designs/job-ad/photos/leadership-executive/exec-01.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-02.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-03.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-04.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-05.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-06.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-07.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-08.jpg",
+      "/designs/job-ad/photos/leadership-executive/exec-09.jpg"
+    ]
+  }
+}
