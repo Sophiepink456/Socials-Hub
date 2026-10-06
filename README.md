@@ -20,3 +20,8 @@ Everything visual lives in `public/designs/<design>/`. Replace the files in GitH
 1. Add an entry to `lib/designs.js` (title, fields and sample text for the home-screen preview).
 2. Add a render file in `lib/render/` and register it in `app/api/render/[id]/route.js`.
 3. Put its backgrounds in `public/designs/<id>/`.
+
+## Notes
+
+- The image renderer (`app/api/render/[id]/route.js`) runs on Vercel's Node.js runtime, not edge. The four Area fonts are too big for the 1 MB edge limit, which made two deploys fail on 6 Oct 2026. Don't switch it back to `runtime = "edge"`.
+
