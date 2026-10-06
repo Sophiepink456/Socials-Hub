@@ -30,7 +30,16 @@ if (fs.existsSync(root)) {
   }
 }
 
-fs.writeFileSync(path.join(__dirname, "..", "lib", "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+// Consultant headshots: public/headshots/<Full Name>.jpg — the file name is
+// the name shown in the dropdown. Add, replace or delete files freely.
+const heads = path.join(__dirname, "..", "public", "headshots");
+const headshots = fs.existsSync(heads)
+  ? fs.readdirSync(heads).filter((f) => IMG.test(f)).sort()
+      .map((f) => ({ name: f.replace(/\.[^.]+$/, ""), path: `/headshots/${f}` }))
+  : [];
+
+fs.writeFileSync(path.join(__dirname, "..", "lib", "manifest.json"), JSON.stringify({ photos: manifest, headshots }, null, 2) + "\n");
+console.log(`[manifest] headshots: ${headshots.length}`);
 const summary = Object.entries(manifest)
   .map(([d, pools]) => `${d}: ` + Object.entries(pools).map(([p, f]) => `${p} ${f.length}`).join(", "))
   .join(" | ");

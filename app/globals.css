@@ -146,4 +146,23 @@ a { color: inherit; }
 }
 .preview-frame img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .2s; }
 .preview-frame.loading img { opacity: .55; }
+textarea.input { resize: vertical; line-height: 1.45; }
+.hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.hint.warn { color: #c0392b; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.tab {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid #cfd5db;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+.tab:hover { border-color: var(--text); }
+.tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
 .preview-note { color: var(--muted); font-size: 13px; margin-top: 10px; text-align: center; }

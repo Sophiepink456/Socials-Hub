@@ -1,14 +1,32 @@
 import { ImageResponse } from "next/og";
 import { getDesign } from "../../../../lib/designs";
-import { randomPhoto, photoPool } from "../../../../lib/photos";
-import { fileName } from "../../../../lib/text";
+import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
+import { fileName, salaryText } from "../../../../lib/text";
 import renderJobAd from "../../../../lib/render/job-ad";
+import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
+// Each renderer gets the form values, the slide number and the resolved
+// asset addresses, and returns the JSX for that one slide.
 const RENDERERS = {
-  "job-ad": renderJobAd,
+  "job-ad": (v, { photo }) => renderJobAd(v, { photo }),
+
+  "job-ideal": (v, a) =>
+    a.slide === 0
+      ? <Cover v={v} photo={a.photo} overlay={a.asset("job-cover/overlay.png")} slides={2} />
+      : <TextSlide heading="Ideal Candidate" body={v.ideal} bg={a.asset("job-cover/slide-bg.png")} index={1} slides={2} />,
+
+  "job-carousel": (v, a) => {
+    const bg = a.asset("job-cover/slide-bg.png");
+    if (a.slide === 0) return <Cover v={v} photo={a.photo} overlay={a.asset("job-cover/overlay.png")} slides={4} />;
+    if (a.slide === 1) return <TextSlide heading="About the Role" body={v.about} bullets bg={bg} index={1} slides={4} />;
+    if (a.slide === 2) return <TextSlide heading="Package" body={v.package} bullets bg={bg} index={2} slides={4} />;
+    const hs = headshotFor(v.consultant);
+    return <ContactSlide question={v.question} name={v.consultant} phone={v.phone}
+      headshot={hs ? a.origin + hs : ""} bg={bg} index={3} slides={4} />;
+  },
 };
 
 export async function GET(req, { params }) {
@@ -17,19 +35,21 @@ export async function GET(req, { params }) {
   if (!design || !render) return new Response("Unknown design", { status: 404 });
 
   const { searchParams, origin } = new URL(req.url);
-  const values = design.sample && searchParams.get("sample") === "1"
-    ? { ...design.sample }
-    : Object.fromEntries(searchParams.entries());
+  const isSample = searchParams.get("sample") === "1";
+  const values = isSample ? { ...design.sample } : Object.fromEntries(searchParams.entries());
+  values.salaryText = salaryText(values.salary, values.hideSalary === "1");
+  const slide = Math.max(0, Math.min(design.slides - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
 
   // Only our own photo files can be used — never an outside address.
   let photo = "";
-  if (design.photo) {
+  if (design.photo && slide === 0) {
+    const set = design.photoSet || design.id;
     const asked = searchParams.get("photo") || "";
     let path;
     if (asked.startsWith("/designs/") && !asked.includes("..")) path = asked;
     // The home-screen preview always uses the first photo, so the card is steady.
-    else if (searchParams.get("sample") === "1") path = photoPool(design.id, values.division)[0];
-    else path = randomPhoto(design.id, values.division);
+    else if (isSample) path = photoPool(set, values.division)[0];
+    else path = randomPhoto(set, values.division);
     photo = path ? origin + path : "";
   }
 
@@ -38,7 +58,10 @@ export async function GET(req, { params }) {
     fetch(new URL("../../../fonts/Area-SemiBold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
   ]);
 
-  return new ImageResponse(render(values, { photo }), {
+  const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
+  const base = fileName(values.title || design.title, "png").replace(/\.png$/, "");
+
+  return new ImageResponse(jsx, {
     width: design.width,
     height: design.height,
     fonts: [
@@ -47,8 +70,8 @@ export async function GET(req, { params }) {
     ],
     headers: {
       "Content-Type": "image/png",
-      "Content-Disposition": 'inline; filename="' + fileName(values.title || design.title, "png") + '"',
-      "Cache-Control": searchParams.get("sample") === "1" ? "public, max-age=300" : "no-store",
+      "Content-Disposition": `inline; filename="${base}${design.slides > 1 ? "-" + (slide + 1) : ""}.png"`,
+      "Cache-Control": isSample ? "public, max-age=300" : "no-store",
     },
   });
 }
