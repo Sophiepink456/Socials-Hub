@@ -4,6 +4,7 @@ import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
 import { fileName, salaryText } from "../../../../lib/text";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
+import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,14 @@ const RENDERERS = {
     return <ContactSlide question={v.question} name={v.consultant} phone={v.phone}
       headshot={hs ? a.origin + hs : ""} bg={bg} index={3} slides={4} />;
   },
+
+  "candidate-ad": (v, a) => <CandidateCover v={v} photo={a.photo} overlay={a.asset("candidate/overlay.png")} slides={1} />,
+
+  "candidate-about": (v, a) => {
+    if (a.slide === 0) return <CandidateCover v={v} photo={a.photo} overlay={a.asset("candidate/overlay.png")} slides={2} />;
+    const hs = headshotFor(v.consultant);
+    return <AboutCandidate v={v} bg={a.asset("candidate/slide-bg.png")} headshot={hs ? a.origin + hs : ""} index={1} slides={2} />;
+  },
 };
 
 export async function GET(req, { params }) {
@@ -48,7 +57,10 @@ export async function GET(req, { params }) {
     let path;
     if (asked.startsWith("/designs/") && !asked.includes("..")) path = asked;
     // The home-screen preview always uses the first photo, so the card is steady.
-    else if (isSample) path = photoPool(set, values.division)[0];
+    else if (isSample) {
+      const pool = photoPool(set, values.division);
+      path = pool.find((x) => design.samplePhoto && x.endsWith("/" + design.samplePhoto)) || pool[0];
+    }
     else path = randomPhoto(set, values.division);
     photo = path ? origin + path : "";
   }
