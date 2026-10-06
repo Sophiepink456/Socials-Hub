@@ -53,9 +53,13 @@ export async function GET(req, { params }) {
     photo = path ? origin + path : "";
   }
 
-  const [bold, semiBold] = await Promise.all([
-    fetch(new URL("../../../fonts/Area-Bold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
+  // Area Normal, as used in the Figma templates: Medium 500 (body copy),
+  // SemiBold 600, Bold 700 (headings, details), Black 900 (cover titles).
+  const [medium, semiBold, bold, black] = await Promise.all([
+    fetch(new URL("../../../fonts/Area-Medium.otf", import.meta.url)).then((r) => r.arrayBuffer()),
     fetch(new URL("../../../fonts/Area-SemiBold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
+    fetch(new URL("../../../fonts/Area-Bold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
+    fetch(new URL("../../../fonts/Area-Black.otf", import.meta.url)).then((r) => r.arrayBuffer()),
   ]);
 
   const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
@@ -65,8 +69,10 @@ export async function GET(req, { params }) {
     width: design.width,
     height: design.height,
     fonts: [
-      { name: "Area", data: bold, weight: 700, style: "normal" },
+      { name: "Area", data: medium, weight: 500, style: "normal" },
       { name: "Area", data: semiBold, weight: 600, style: "normal" },
+      { name: "Area", data: bold, weight: 700, style: "normal" },
+      { name: "Area", data: black, weight: 900, style: "normal" },
     ],
     headers: {
       "Content-Type": "image/png",
