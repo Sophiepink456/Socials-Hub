@@ -6,7 +6,13 @@ import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
 
-export const runtime = "edge";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+// Node.js runtime, not edge: the four Area font files take the renderer past
+// Vercel's 1 MB edge-function limit. next.config.js makes sure app/fonts is
+// shipped with this function.
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Each renderer gets the form values, the slide number and the resolved
@@ -38,6 +44,18 @@ const RENDERERS = {
   },
 };
 
+// Read once per server instance, then reused.
+let fontsPromise;
+function loadFonts() {
+  if (!fontsPromise) {
+    const dir = path.join(process.cwd(), "app", "fonts");
+    fontsPromise = Promise.all(
+      ["Area-Medium.otf", "Area-SemiBold.otf", "Area-Bold.otf", "Area-Black.otf"].map((f) => readFile(path.join(dir, f)))
+    ).catch((e) => { fontsPromise = null; throw e; });
+  }
+  return fontsPromise;
+}
+
 export async function GET(req, { params }) {
   const design = getDesign(params.id);
   const render = RENDERERS[params.id];
@@ -67,12 +85,7 @@ export async function GET(req, { params }) {
 
   // Area Normal, as used in the Figma templates: Medium 500 (body copy),
   // SemiBold 600, Bold 700 (headings, details), Black 900 (cover titles).
-  const [medium, semiBold, bold, black] = await Promise.all([
-    fetch(new URL("../../../fonts/Area-Medium.otf", import.meta.url)).then((r) => r.arrayBuffer()),
-    fetch(new URL("../../../fonts/Area-SemiBold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
-    fetch(new URL("../../../fonts/Area-Bold.otf", import.meta.url)).then((r) => r.arrayBuffer()),
-    fetch(new URL("../../../fonts/Area-Black.otf", import.meta.url)).then((r) => r.arrayBuffer()),
-  ]);
+  const [medium, semiBold, bold, black] = await loadFonts();
 
   const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
   const base = fileName(values.title || design.title, "png").replace(/\.png$/, "");
