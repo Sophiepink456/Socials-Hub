@@ -9,7 +9,9 @@ export default function Editor({ id }) {
   const design = getDesign(id);
   const set_ = design.photoSet || design.id;
   const multi = design.slides > 1;
-  const [values, setValues] = useState({});
+  // Fields with a default (e.g. Colour) start filled in.
+  const [values, setValues] = useState(() =>
+    Object.fromEntries(design.fields.filter((f) => f.default).map((f) => [f.key, f.default])));
   const [photo, setPhoto] = useState("");
   const [slide, setSlide] = useState(0);
   const [src, setSrc] = useState("");
@@ -184,7 +186,7 @@ function Field({ f, values, set, onFocus }) {
 
       {f.type === "select" || f.type === "consultant" ? (
         <select id={f.key} className="select" value={v} onFocus={onFocus} onChange={(e) => set(f.key, e.target.value)}>
-          <option value="">{f.placeholder || "Select"}</option>
+          {f.default ? null : <option value="">{f.placeholder || "Select"}</option>}
           {(f.type === "consultant" ? HEADSHOTS.map((h) => h.name) : f.options).map((o) => (<option key={o} value={o}>{o}</option>))}
         </select>
       ) : f.type === "textarea" ? (

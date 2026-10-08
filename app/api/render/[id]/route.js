@@ -5,6 +5,13 @@ import { fileName, salaryText } from "../../../../lib/text";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
+import { LiveRoles, Statement, Testimonial } from "../../../../lib/render/social";
+
+// "Green" -> "green"; anything unexpected falls back to the first colourway.
+const pickVariant = (v, allowed) => {
+  const k = String(v || "").trim().toLowerCase();
+  return allowed.includes(k) ? k : allowed[0];
+};
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -42,15 +49,35 @@ const RENDERERS = {
     const hs = headshotFor(v.consultant);
     return <AboutCandidate v={v} bg={a.asset("candidate/slide-bg.png")} headshot={hs ? a.origin + hs : ""} index={1} slides={2} />;
   },
+
+  "live-roles": (v, a) => <LiveRoles v={v} photo={a.photo} overlay={a.asset("live-roles/overlay.png")} />,
+
+  statement: (v, a) => {
+    const variant = pickVariant(v.variant, ["green", "black", "grey"]);
+    return <Statement v={v} variant={variant} bg={a.asset(`statement/${variant}.png`)} />;
+  },
+
+  testimonial: (v, a) => {
+    const variant = pickVariant(v.variant, ["green", "dark", "light"]);
+    return <Testimonial v={v} variant={variant} bg={a.asset(`testimonial/${variant}.png`)} />;
+  },
 };
 
-// Read once per server instance, then reused.
+// Area Normal, as used in the Figma templates. Read once per server instance.
+//   Light 300: statement text          Medium 500: body copy, bullets
+//   Regular 400: testimonial body      Bold 700: headings, details, names
+//   SemiBold 600: LinkedIn Job Ad      ExtraBold 800: testimonial headline
+//   Black 900: cover titles
+const FONT_FILES = [
+  ["Area-Light.otf", 300], ["Area-Regular.otf", 400], ["Area-Medium.otf", 500], ["Area-SemiBold.otf", 600],
+  ["Area-Bold.otf", 700], ["Area-ExtraBold.otf", 800], ["Area-Black.otf", 900],
+];
 let fontsPromise;
 function loadFonts() {
   if (!fontsPromise) {
     const dir = path.join(process.cwd(), "app", "fonts");
     fontsPromise = Promise.all(
-      ["Area-Medium.otf", "Area-SemiBold.otf", "Area-Bold.otf", "Area-Black.otf"].map((f) => readFile(path.join(dir, f)))
+      FONT_FILES.map(async ([f, weight]) => ({ name: "Area", data: await readFile(path.join(dir, f)), weight, style: "normal" }))
     ).catch((e) => { fontsPromise = null; throw e; });
   }
   return fontsPromise;
@@ -83,9 +110,7 @@ export async function GET(req, { params }) {
     photo = path ? origin + path : "";
   }
 
-  // Area Normal, as used in the Figma templates: Medium 500 (body copy),
-  // SemiBold 600, Bold 700 (headings, details), Black 900 (cover titles).
-  const [medium, semiBold, bold, black] = await loadFonts();
+    const fonts = await loadFonts();
 
   const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
   const base = fileName(values.title || design.title, "png").replace(/\.png$/, "");
@@ -93,12 +118,7 @@ export async function GET(req, { params }) {
   return new ImageResponse(jsx, {
     width: design.width,
     height: design.height,
-    fonts: [
-      { name: "Area", data: medium, weight: 500, style: "normal" },
-      { name: "Area", data: semiBold, weight: 600, style: "normal" },
-      { name: "Area", data: bold, weight: 700, style: "normal" },
-      { name: "Area", data: black, weight: 900, style: "normal" },
-    ],
+    fonts,
     headers: {
       "Content-Type": "image/png",
       "Content-Disposition": `inline; filename="${base}${design.slides > 1 ? "-" + (slide + 1) : ""}.png"`,
