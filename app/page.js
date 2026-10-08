@@ -14,7 +14,7 @@ export default function Home() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/render/${d.id}?sample=1`} alt={`${d.title} example`} loading="lazy" />
             </div>
-            <div className="card-meta">{d.slides === 1 ? "1 image" : `${d.slides} slides`} · {d.blurb}</div>
+            <div className="card-meta">{d.slidesLabel || (d.slides === 1 ? "1 image" : `${d.slides} slides`)} · {d.blurb}</div>
           </a>
         ))}
       </div>

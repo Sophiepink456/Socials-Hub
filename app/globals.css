@@ -166,3 +166,14 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 
 .preview-note { color: var(--muted); font-size: 13px; margin-top: 10px; text-align: center; }
+
+/* Group headings inside a form, e.g. "Reason 2", "Job 3" */
+.group-title {
+  font-family: var(--font-area), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 26px 0 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}

@@ -1,11 +1,12 @@
 import { ImageResponse } from "next/og";
-import { getDesign } from "../../../../lib/designs";
+import { getDesign, slideCount, photoSlides, jobCount } from "../../../../lib/designs";
 import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
 import { fileName, salaryText } from "../../../../lib/text";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
 import { LiveRoles, Statement, Testimonial } from "../../../../lib/render/social";
+import { ReasonsCover, ReasonSlide, ReasonsEnd, REASON_LOOKS, VacanciesCover, VacancyJob, VacanciesEnd } from "../../../../lib/render/carousels";
 
 // "Green" -> "green"; anything unexpected falls back to the first colourway.
 const pickVariant = (v, allowed) => {
@@ -61,6 +62,27 @@ const RENDERERS = {
     const variant = pickVariant(v.variant, ["green", "dark", "light"]);
     return <Testimonial v={v} variant={variant} bg={a.asset(`testimonial/${variant}.png`)} />;
   },
+
+  reasons: (v, a) => {
+    if (a.slide === 0) return <ReasonsCover v={v} photo={a.photo} overlay={a.asset("reasons/cover-overlay.png")} />;
+    if (a.slide === 6) return <ReasonsEnd v={v} photo={a.photo} overlay={a.asset("reasons/end-overlay.png")} />;
+    const look = REASON_LOOKS[a.slide - 1];
+    return <ReasonSlide v={v} n={a.slide} photo={a.photo}
+      bg={a.asset(look === "photo" ? "reasons/photo-overlay.png" : `reasons/${look}.png`)} />;
+  },
+
+  vacancies: (v, a) => {
+    const jobs = jobCount(v);
+    if (a.slide === 0) return <VacanciesCover photo={a.photo} overlay={a.asset("vacancies/cover-overlay.png")} jobs={jobs} />;
+    if (a.slide > jobs) return <VacanciesEnd bg={a.asset("vacancies/end.png")} />;
+    const g = (k) => String(v[`j${a.slide}_${k}`] || "").trim();
+    // Later jobs fall back to Job 1's consultant and phone when left blank.
+    const consultant = g("consultant") || String(v.j1_consultant || "").trim();
+    const phone = g("phone") || (g("consultant") ? "" : String(v.j1_phone || "").trim());
+    const job = { division: g("division"), title: g("title"), location: g("location"),
+      salaryText: salaryText(g("salary"), v[`j${a.slide}_hideSalary`] === "1"), consultant, phone };
+    return <VacancyJob job={job} n={a.slide} jobs={jobs} photo={a.photo} overlay={a.asset("vacancies/job-overlay.png")} />;
+  },
 };
 
 // Area Normal, as used in the Figma templates. Read once per server instance.
@@ -92,11 +114,12 @@ export async function GET(req, { params }) {
   const isSample = searchParams.get("sample") === "1";
   const values = isSample ? { ...design.sample } : Object.fromEntries(searchParams.entries());
   values.salaryText = salaryText(values.salary, values.hideSalary === "1");
-  const slide = Math.max(0, Math.min(design.slides - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
+  const count = slideCount(design, values);
+  const slide = Math.max(0, Math.min(count - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
 
   // Only our own photo files can be used — never an outside address.
   let photo = "";
-  if (design.photo && slide === 0) {
+  if (photoSlides(design, values).includes(slide)) {
     const set = design.photoSet || design.id;
     const asked = searchParams.get("photo") || "";
     let path;
@@ -104,13 +127,16 @@ export async function GET(req, { params }) {
     // The home-screen preview always uses the first photo, so the card is steady.
     else if (isSample) {
       const pool = photoPool(set, values.division);
-      path = pool.find((x) => design.samplePhoto && x.endsWith("/" + design.samplePhoto)) || pool[0];
+      // Cover uses the chosen sample photo; later slides step through the pool.
+      path = slide === 0
+        ? pool.find((x) => design.samplePhoto && x.endsWith("/" + design.samplePhoto)) || pool[0]
+        : pool[(slide * 11) % pool.length];
     }
     else path = randomPhoto(set, values.division);
     photo = path ? origin + path : "";
   }
 
-    const fonts = await loadFonts();
+  const fonts = await loadFonts();
 
   const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
   const base = fileName(values.title || design.title, "png").replace(/\.png$/, "");
@@ -121,7 +147,7 @@ export async function GET(req, { params }) {
     fonts,
     headers: {
       "Content-Type": "image/png",
-      "Content-Disposition": `inline; filename="${base}${design.slides > 1 ? "-" + (slide + 1) : ""}.png"`,
+      "Content-Disposition": `inline; filename="${base}${count > 1 ? "-" + (slide + 1) : ""}.png"`,
       "Cache-Control": isSample ? "public, max-age=300" : "no-store",
     },
   });

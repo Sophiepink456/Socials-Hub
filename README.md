@@ -14,6 +14,8 @@ Everything visual lives in `public/designs/<design>/`. Replace the files in GitH
 - **Live Roles background:** `public/designs/live-roles/overlay.png` (shading, swirl, logo) sits over a faint office photo from the job carousel set.
 - **Statement backgrounds:** `public/designs/statement/green.png`, `black.png`, `grey.png`.
 - **Testimonial backgrounds:** `public/designs/testimonial/green.png`, `dark.png`, `light.png` (gradient, blurred "e", logo at the top).
+- **5 Reasons Carousel:** `public/designs/reasons/`. `cover-overlay.png` (shading, swirl, logo over the cover photo), `green.png` / `dark.png` / `light.png` (reasons one, three and five), `photo-overlay.png` (laid over the photo on reasons two and four), `end-overlay.png` (closing slide, over a faint photo). Photos come from the job carousel set.
+- **Multi Vacancy Carousel:** `public/designs/vacancies/`. `cover-overlay.png` ("Your Next Career" cover shading, dots, logo), `job-overlay.png` (shading, swirl and small logo on each job slide), `end.png` ("You Swiped for a Reason" background). Each slide gets its own photo from the job carousel set.
 - **Consultant headshots:** `public/headshots/<Full Name>.jpg`. The file name is the name shown in the Consultant dropdown and printed on the slide.
 - **Colours and division list:** `lib/brand.js`.
 - **Fonts:** `app/fonts/`.
