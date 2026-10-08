@@ -1,0 +1,38 @@
+/* Proposal pages: 1920 x 1080, built to match the LIVE-TEMPLATE Figma file. */
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Light.woff2") format("woff2"); font-weight: 300; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Medium.woff2") format("woff2"); font-weight: 500; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-ExtraBold.woff2") format("woff2"); font-weight: 800; font-display: block; }
+@font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Black.woff2") format("woff2"); font-weight: 900; font-display: block; }
+
+@font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+
+.pp {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  isolation: isolate;
+  font-family: "AreaP", system-ui, sans-serif;
+  color: #161616;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+}
+.pp * { box-sizing: border-box; margin: 0; padding: 0; }
+.pp .abs { position: absolute; }
+.pp .full { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.pp img.cover { object-fit: cover; display: block; }
+/* Figma "vertical trim: cap height to baseline" */
+.pp .trim { text-box: trim-both cap alphabetic; }
+.pp .g { color: #93bf20; }
+.pp .col { display: flex; flex-direction: column; }
+.pp .row { display: flex; flex-direction: row; }
+.pp .pre { white-space: pre-line; }
+.pp a { color: inherit; text-decoration: none; }
+.pp ul.bul { list-style: disc; padding-left: 27px; }
+.pp ul.bul li { padding-left: 0; }
+.pp .poppins { font-family: "PoppinsP", "AreaP", sans-serif; }
+.pp .paras p + p { margin-top: var(--ps, 15px); }

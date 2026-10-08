@@ -7,8 +7,9 @@ const TOOLS = [
     id: "proposals",
     title: "Proposals & Candidate Packs",
     blurb: "Client proposals and candidate packs, ready to send.",
-    href: null,
+    href: "/proposals",
     icon: "doc",
+    image: "/proposal/preview.jpg",
   },
   {
     id: "request",
@@ -53,8 +54,11 @@ function ToolCard({ t }) {
     <>
       <h2 className="card-title">{t.title}</h2>
       <div className={"tool-img" + (t.href ? "" : " soon")}>
-        <div className="tool-icon">{ICONS[t.icon]}</div>
-        <span className={"tool-tag" + (t.href ? " live" : "")}>{t.href ? (t.external ? "Open in Google Drive ↗" : "Open") : "Coming soon"}</span>
+        {t.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={t.image} alt="" className="tool-photo" />
+        ) : <div className="tool-icon">{ICONS[t.icon]}</div>}
+        <span className={"tool-tag" + (t.href ? " live" : "")}>{t.href ? (t.external ? "Open in Google Drive ↗" : "Start a proposal") : "Coming soon"}</span>
       </div>
       <div className="card-meta">{t.blurb}</div>
     </>
