@@ -41,6 +41,8 @@ a { color: inherit; }
 }
 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--green); display: inline-block; }
 .bar-note { color: #a7adb3; font-size: 13px; }
+.bar-logo { height: 40px; width: auto; display: block; }
+@media (max-width: 520px) { .bar-logo { height: 30px; } }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 24px 80px; }
 .h1 {

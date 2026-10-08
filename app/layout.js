@@ -23,7 +23,8 @@ export default function RootLayout({ children }) {
             <span className="dot" aria-hidden="true" />
             Marketing Hub
           </a>
-          <span className="bar-note">Elevation Recruitment Group</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/elevation-logo.png" alt="Elevation Recruitment Group" className="bar-logo" />
         </header>
         {children}
       </body>
