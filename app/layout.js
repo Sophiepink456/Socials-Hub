@@ -10,7 +10,7 @@ const area = localFont({
 });
 
 export const metadata = {
-  title: "Socials Hub · Elevation",
+  title: "Marketing Hub · Elevation",
   description: "Pick a design, fill in the details, download the post.",
 };
 
@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
         <header className="bar">
           <a href="/" className="brand">
             <span className="dot" aria-hidden="true" />
-            Socials Hub
+            Marketing Hub
           </a>
           <span className="bar-note">Elevation Recruitment Group</span>
         </header>

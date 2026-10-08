@@ -1,4 +1,4 @@
-# Elevation Socials Hub
+# Elevation Marketing Hub
 
 Consultants pick a design on the home screen, fill in the fields and download the finished post.
 
