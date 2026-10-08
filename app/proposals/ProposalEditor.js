@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { proposalPages } from "../../lib/proposal/pages";
 import {
   APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise,
+  assignPhotos, photoFits, textFields, fieldName,
 } from "../../lib/proposal/data";
 
 const DRAFT_KEY = "proposal-draft-v1";
@@ -108,15 +109,23 @@ function Section({ title, children, open, onToggle, done }) {
 
 // ---- the editor --------------------------------------------------------------
 
-export default function ProposalEditor() {
-  const [p, setP] = useState(() => blankProposal());
+export default function ProposalEditor({ mode = "new", record = null, onRecord }) {
+  const review = mode === "review";
+  const [p, setP] = useState(() => (record ? normalise(record.data) : blankProposal()));
   const [page, setPage] = useState("title");
-  const [open, setOpen] = useState("client");
+  const [open, setOpen] = useState(review ? "" : "client");
   const [busy, setBusy] = useState("");
+  const [siteState, setSiteState] = useState({ busy: false, msg: "" });
+  const [issues, setIssues] = useState(null); // null = not checked yet
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [submit, setSubmit] = useState(null); // {name, email} while the send panel is open
+  const [done, setDone] = useState("");
+  const [sendTo, setSendTo] = useState(record ? (record.submittedBy && record.submittedBy.email) || "" : "");
   const loaded = useRef(false);
 
   // Keep a draft in this browser so nothing is lost on refresh.
   useEffect(() => {
+    if (review) return;
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
       if (d) setP(normalise(d));
@@ -124,7 +133,7 @@ export default function ProposalEditor() {
     loaded.current = true;
   }, []);
   useEffect(() => {
-    if (!loaded.current) return;
+    if (!loaded.current || review) return;
     const t = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(p)); } catch {} }, 400);
     return () => clearTimeout(t);
   }, [p]);
@@ -175,6 +184,100 @@ export default function ProposalEditor() {
     setOpen("client");
   }
 
+  // ---- client website: photos + logo ----
+  async function findFromWebsite() {
+    if (!p.clientWebsite.trim()) { setSiteState({ busy: false, msg: "Add the client's website address first." }); return; }
+    setSiteState({ busy: true, msg: "Reading the website and picking photos… this takes up to a minute." });
+    try {
+      const res = await fetch("/api/proposals/scrape", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: p.clientWebsite, company: p.clientName }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error || "Couldn't read that website.");
+      setP((cur) => {
+        let next = { ...cur, sitePhotos: r.photos || [] };
+        next = { ...next, ...assignPhotos(r.photos || []) };
+        if (r.logo && !cur.clientLogo) next.clientLogo = r.logo;
+        return next;
+      });
+      const n = (r.photos || []).length;
+      const slotsFilled = Object.keys(assignPhotos(r.photos || [])).length;
+      setSiteState({
+        busy: false,
+        msg: `${n ? `Found ${n} usable photo${n === 1 ? "" : "s"} and placed ${slotsFilled} of ${PHOTO_SLOTS.length}.` : "No usable photos on that site, so our own photos stay in."}${slotsFilled < PHOTO_SLOTS.length && n ? " The other spots keep our photos, as the site didn't have enough suitable pictures big enough to stay sharp." : ""} ${r.logo ? `Logo found (${r.logoSource}).` : "No logo found. Please upload it below."} Swap any picture in section ${p.nda ? 11 : 12}.`,
+      });
+      setPage("title");
+    } catch (e) {
+      setSiteState({ busy: false, msg: e.message });
+    }
+  }
+
+  // ---- spelling and grammar ----
+  async function runCheck() {
+    setCheckBusy(true);
+    try {
+      const res = await fetch("/api/proposals/proofread", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: textFields(p) }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error);
+      setIssues(r.issues || []);
+      return r.issues || [];
+    } catch (e) {
+      alert(e.message || "The check didn't work this time.");
+      return null;
+    } finally {
+      setCheckBusy(false);
+    }
+  }
+  function applyFix(i) {
+    const it = issues[i];
+    const cur = String(getIn(p, it.field) || "");
+    set(it.field, cur.replace(it.find, it.replace));
+    setIssues(issues.filter((_, j) => j !== i));
+  }
+
+  // ---- sending ----
+  async function sendForProofing() {
+    if (!submit.email.trim()) { alert("Add your email so the finished proposal can come back to you."); return; }
+    setBusy("Sending…");
+    try {
+      const res = await fetch("/api/proposals/submit", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposal: p, submitter: submit }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error);
+      setSubmit(null);
+      setDone("Sent for proof-reading. You'll get the finished PDF by email once it's been checked.");
+    } catch (e) {
+      alert(e.message || "Sorry, it didn't send. Try again in a moment.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function reviewAction(action, label) {
+    if (action === "send-consultant" && !sendTo.trim()) { alert("Add the consultant's email."); return; }
+    setBusy(label);
+    try {
+      const res = await fetch(`/api/proposals/${record.id}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ k: record.key, action, data: p, to: sendTo }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error);
+      onRecord && onRecord(r);
+      setDone(action === "save" ? "Changes saved and the PDF updated." : action === "send-check" ? "Sent to the final checker." : `Sent to ${sendTo}.`);
+    } catch (e) {
+      alert(e.message || "Something went wrong.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   const two = !!p.twoConsultants;
   const toggle = (k) => setOpen((o) => (o === k ? "" : k));
   const benefits = p.benefits && p.benefits.length ? p.benefits : [""];
@@ -186,10 +289,15 @@ export default function ProposalEditor() {
           <Text label="Client name" path="clientName" max={LIMITS.clientName} page="title" placeholder="e.g. Westmarq" {...f} />
           <Text label="Role title" path="roleTitle" page="title" placeholder="e.g. Chief Technology Officer" {...f}
             hint="Shown on the title page as “For the Appointment of …”." />
-          <Text label="Client website" path="clientWebsite" type="url" page="title" placeholder="e.g. https://www.westmarq.co.uk" {...f}
-            hint="Coming next: the hub will pull the client’s logo and photos from here. For now, add the logo below and choose photos in section 11." />
+          <Text label="Client website" path="clientWebsite" type="url" page="title" placeholder="e.g. www.westmarq.co.uk" {...f} />
           <div className="row">
-            <label className="label"><span>Client logo <span className="opt">(PNG or SVG with a clear background)</span></span></label>
+            <button type="button" className="btn btn-ghost btn-small" onClick={findFromWebsite} disabled={siteState.busy}>
+              {siteState.busy ? "Looking…" : "Get photos & logo from the website"}
+            </button>
+            {siteState.msg ? <div className="hint">{siteState.msg}</div> : <div className="hint">Pulls the client’s logo and general photos (no headshots or news pictures) and places them on the pages.</div>}
+          </div>
+          <div className="row">
+            <label className="label"><span>Client logo <span className="opt">(found automatically, or upload a PNG/SVG)</span></span></label>
             <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" onChange={async (e) => {
               const file = e.target.files && e.target.files[0];
               if (!file) return;
@@ -319,8 +427,22 @@ export default function ProposalEditor() {
               {(p.appendices || []).map((a, i) => (
                 <div key={i} className="subgroup">
                   <Text label={`Appendix ${i + 1} title`} path={`appendices.${i}.title`} max={LIMITS.appendixTitle} page="appendices" {...f} />
-                  <Text label="Link to the document" path={`appendices.${i}.link`} type="url" page="appendices" placeholder="https://…" {...f}
-                    hint="Coming next: upload the document here instead of pasting a link." />
+                  <div className="row">
+                    <label className="label"><span>Document</span></label>
+                    <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*" onChange={async (e) => {
+                      const file = e.target.files && e.target.files[0];
+                      if (!file) return;
+                      if (file.size > 4 * 1024 * 1024) { alert("Please keep documents under 4 MB."); return; }
+                      const fd = new FormData(); fd.append("file", file);
+                      const res = await fetch("/api/proposals/upload", { method: "POST", body: fd });
+                      const r = await res.json();
+                      if (!res.ok) { alert(r.error || "Upload failed."); return; }
+                      set(`appendices.${i}.link`, r.url); set(`appendices.${i}.file`, r.name); setPage("appendices");
+                    }} />
+                    {a.link ? <div className="hint">Linked: {a.file || a.link} <button type="button" className="link" onClick={() => { set(`appendices.${i}.link`, ""); set(`appendices.${i}.file`, ""); }}>Remove</button></div>
+                      : <div className="hint">The “View” button in the PDF opens this document. Or paste a link instead:</div>}
+                    {!a.link ? <input className="input" style={{ marginTop: 6 }} placeholder="https://…" defaultValue="" onBlur={(e) => e.target.value.trim() && set(`appendices.${i}.link`, e.target.value.trim())} /> : null}
+                  </div>
                   <button type="button" className="link" onClick={() => set("appendices", p.appendices.filter((_, j) => j !== i))}>Remove appendix</button>
                 </div>
               ))}
@@ -332,11 +454,22 @@ export default function ProposalEditor() {
         </Section>
 
         <Section title={`${p.nda ? 11 : 12}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
-          <p className="hint" style={{ marginTop: 0 }}>Coming next: these fill automatically from the client’s website. For now, choose one of our photos or upload one.</p>
+          <p className="hint" style={{ marginTop: 0 }}>Photos from the client’s website come first, then ours. Faded ones are too small for that spot and would look blurry.</p>
           {PHOTO_SLOTS.map((s) => (
             <div key={s.key} className="row">
               <label className="label"><span>{s.label}</span></label>
               <div className="photo-pick">
+                {(p.sitePhotos || []).map((ph) => {
+                  const fits = photoFits(ph, s);
+                  return (
+                    <button key={ph.url} type="button" disabled={!fits} title={fits ? "From the client’s website" : "Too small for this spot"}
+                      className={"thumb site" + (p[s.key] === ph.url ? " on" : "") + (fits ? "" : " small")}
+                      onClick={() => { set(s.key, ph.url); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ph.url} alt="" loading="lazy" />
+                    </button>
+                  );
+                })}
                 {STOCK_PHOTOS.map((src) => (
                   <button key={src} type="button" className={"thumb" + (p[s.key] === src ? " on" : "")}
                     onClick={() => { set(s.key, src); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
@@ -356,11 +489,78 @@ export default function ProposalEditor() {
           ))}
         </Section>
 
-        <div className="actions">
-          <button type="button" className="btn btn-primary" onClick={downloadPdf} disabled={!!busy}>{busy || "Download PDF"}</button>
-          <button type="button" className="btn btn-ghost" onClick={startAgain}>Start a new proposal</button>
-        </div>
-        <p className="hint">Your work is saved in this browser as you go. Sending to proof-reading is coming next.</p>
+        {issues ? (
+          <div className="issues">
+            <div className="issues-head">{issues.length ? `${issues.length} thing${issues.length === 1 ? "" : "s"} to check` : "No spelling or grammar mistakes found."}</div>
+            {issues.map((it, i) => (
+              <div key={i} className="issue">
+                <div className="issue-field">{fieldName(it.field)}</div>
+                <div><s>{it.find}</s> → <b>{it.replace}</b></div>
+                {it.why ? <div className="hint" style={{ marginTop: 2 }}>{it.why}</div> : null}
+                <div className="issue-actions">
+                  <button type="button" className="link" onClick={() => applyFix(i)}>Fix it</button>
+                  <button type="button" className="link muted" onClick={() => setIssues(issues.filter((_, j) => j !== i))}>Ignore</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {done ? <div className="done-msg">{done}</div> : null}
+
+        {submit && !review ? (
+          <div className="psec open send-panel">
+            <div className="psec-body" style={{ borderTop: 0 }}>
+              <h3 className="group-title" style={{ marginTop: 0 }}>Send for proof-reading</h3>
+              <div className="row"><label className="label"><span>Your name</span></label>
+                <input className="input" value={submit.name} onChange={(e) => setSubmit({ ...submit, name: e.target.value })} /></div>
+              <div className="row"><label className="label"><span>Your email (the finished PDF comes back here)</span></label>
+                <input className="input" type="email" value={submit.email} onChange={(e) => setSubmit({ ...submit, email: e.target.value })} /></div>
+              {issues && issues.length ? <div className="hint warn">There are still {issues.length} spelling or grammar point{issues.length === 1 ? "" : "s"} above. You can fix them first or send anyway.</div> : null}
+              <div className="actions">
+                <button type="button" className="btn btn-primary" onClick={sendForProofing} disabled={!!busy}>{busy || "Send"}</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setSubmit(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {review ? (
+          <>
+            <div className="actions">
+              <button type="button" className="btn btn-ghost" onClick={runCheck} disabled={checkBusy}>{checkBusy ? "Checking…" : "Check spelling & grammar"}</button>
+              <button type="button" className="btn btn-ghost" onClick={() => reviewAction("save", "Saving…")} disabled={!!busy}>Save changes</button>
+            </div>
+            <div className="actions">
+              <button type="button" className="btn btn-primary" onClick={() => reviewAction("send-check", "Sending…")} disabled={!!busy}>{busy || "Send to final checker"}</button>
+            </div>
+            <div className="row" style={{ marginTop: 10 }}>
+              <label className="label"><span>Consultant’s email</span></label>
+              <input className="input" type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
+            </div>
+            <div className="actions">
+              <button type="button" className="btn btn-primary" onClick={() => { if (confirm(`Send the finished proposal to ${sendTo}?`)) reviewAction("send-consultant", "Sending…"); }} disabled={!!busy}>Send to consultant</button>
+              <button type="button" className="btn btn-ghost" onClick={downloadPdf} disabled={!!busy}>Download PDF</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="actions">
+              <button type="button" className="btn btn-ghost" onClick={runCheck} disabled={checkBusy}>{checkBusy ? "Checking…" : "Check spelling & grammar"}</button>
+              <button type="button" className="btn btn-ghost" onClick={downloadPdf} disabled={!!busy}>{busy && !submit ? busy : "Download PDF"}</button>
+            </div>
+            <div className="actions">
+              <button type="button" className="btn btn-primary" disabled={!!busy || checkBusy} onClick={async () => {
+                setDone("");
+                const found = issues === null ? await runCheck() : issues;
+                if (found === null && !confirm("The spelling check didn't run. Send anyway?")) return;
+                setSubmit({ name: p.consultant1 || "", email: p.c1.email || emailFor(p.consultant1) || "" });
+              }}>Send for proof-reading</button>
+              <button type="button" className="btn btn-ghost" onClick={startAgain}>Start a new proposal</button>
+            </div>
+            <p className="hint">Your work is saved in this browser as you go.</p>
+          </>
+        )}
       </div>
 
       <div className="ppreview">

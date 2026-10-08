@@ -1,0 +1,135 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+const KEY = "hub-passcode";
+
+export default function Settings() {
+  const [code, setCode] = useState("");
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState("");
+  const [form, setForm] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState("");
+
+  async function load(pass) {
+    setErr("");
+    const r = await fetch("/api/settings", { headers: { "x-passcode": pass }, cache: "no-store" });
+    const j = await r.json();
+    if (!r.ok) { setErr(j.error || "Couldn't open settings."); try { sessionStorage.removeItem(KEY); } catch {} return; }
+    try { sessionStorage.setItem(KEY, pass); } catch {}
+    setData(j);
+    setForm({
+      proofreaders: (j.settings.proofreaders || []).join("\n"),
+      finalChecker: j.settings.finalChecker || "",
+      media1: (j.settings.mediaLinks || [])[0] || "",
+      media2: (j.settings.mediaLinks || [])[1] || "",
+    });
+  }
+
+  useEffect(() => {
+    let saved = "";
+    try { saved = sessionStorage.getItem(KEY) || ""; } catch {}
+    if (saved) { setCode(saved); load(saved); }
+  }, []);
+
+  async function save() {
+    setBusy("Saving…"); setMsg("");
+    try {
+      const r = await fetch("/api/settings", {
+        method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code },
+        body: JSON.stringify({ settings: {
+          proofreaders: form.proofreaders.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean),
+          finalChecker: form.finalChecker.trim(),
+          mediaLinks: [form.media1.trim(), form.media2.trim()],
+        } }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setMsg("Saved.");
+    } catch (e) { setMsg(e.message || "Couldn't save."); } finally { setBusy(""); }
+  }
+
+  async function testEmail() {
+    setBusy("Sending…"); setMsg("");
+    try {
+      const r = await fetch("/api/settings/test-email", { method: "POST", headers: { "x-passcode": code } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setMsg("Test sent to Zapier. If the Zap is switched on, the email will arrive in a minute.");
+    } catch (e) { setMsg(`Test failed: ${e.message}`); } finally { setBusy(""); }
+  }
+
+  if (!data) {
+    return (
+      <form className="panel" style={{ maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); load(code); }}>
+        <div className="row">
+          <label className="label" htmlFor="code"><span>Passcode</span></label>
+          <input id="code" type="password" className="input" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+        </div>
+        {err ? <div className="hint warn">{err}</div> : null}
+        <div className="actions"><button className="btn btn-primary" type="submit">Open settings</button></div>
+      </form>
+    );
+  }
+
+  const ok = (b) => <span className={b ? "pill-ok" : "pill-no"}>{b ? "Connected" : "Not set up"}</span>;
+  return (
+    <div className="settings-grid">
+      <div className="panel">
+        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposal emails</h3>
+        <div className="row">
+          <label className="label" htmlFor="pr"><span>Proof-reader(s)</span></label>
+          <textarea id="pr" className="input" rows={3} value={form.proofreaders} onChange={(e) => setForm({ ...form, proofreaders: e.target.value })} />
+          <div className="hint">One email per line. Swap this to a colleague while you’re on annual leave.</div>
+        </div>
+        <div className="row">
+          <label className="label" htmlFor="fc"><span>Final checker</span></label>
+          <input id="fc" className="input" value={form.finalChecker} onChange={(e) => setForm({ ...form, finalChecker: e.target.value })} />
+        </div>
+        <h3 className="group-title">Branded Campaigns page</h3>
+        <div className="row">
+          <label className="label" htmlFor="m1"><span>“View Media” link under the 2nd example</span></label>
+          <input id="m1" className="input" value={form.media1} placeholder="https://…" onChange={(e) => setForm({ ...form, media1: e.target.value })} />
+        </div>
+        <div className="row">
+          <label className="label" htmlFor="m2"><span>“View Media” link under the 3rd example (video)</span></label>
+          <input id="m2" className="input" value={form.media2} placeholder="https://…" onChange={(e) => setForm({ ...form, media2: e.target.value })} />
+        </div>
+        {msg ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
+        <div className="actions">
+          <button className="btn btn-primary" type="button" onClick={save} disabled={!!busy}>{busy === "Saving…" ? busy : "Save settings"}</button>
+          <button className="btn btn-ghost" type="button" onClick={testEmail} disabled={!!busy}>{busy === "Sending…" ? busy : "Send test email"}</button>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Connections</h3>
+        <table className="table"><tbody>
+          <tr><td>Storage (Vercel Blob)</td><td>{ok(data.checks.storage)}</td></tr>
+          <tr><td>Claude (photos, logo, spelling)</td><td>{ok(data.checks.claude)}</td></tr>
+          <tr><td>Emails (Zapier webhook)</td><td>{ok(data.checks.email)}</td></tr>
+        </tbody></table>
+      </div>
+
+      <div className="panel">
+        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals</h3>
+        {data.proposals.length ? (
+          <table className="table">
+            <thead><tr><th>Client – role</th><th>Consultant</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+              {data.proposals.map((r) => (
+                <tr key={r.id}>
+                  <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                  <td>{r.consultant}</td>
+                  <td>{r.status}</td>
+                  <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="hint">No proposals submitted yet.</p>}
+      </div>
+    </div>
+  );
+}

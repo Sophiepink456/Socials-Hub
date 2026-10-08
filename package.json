@@ -11,11 +11,15 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^153.0.0",
+    "@vercel/blob": "^2.8.1",
+    "image-size": "^1.2.1",
     "next": "14.2.5",
+    "node-html-parser": "^9.0.4",
     "pdf-lib": "^1.17.1",
     "puppeteer-core": "^25.13.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "sharp": "^0.35.5"
   },
   "engines": {
     "node": "22.x"
