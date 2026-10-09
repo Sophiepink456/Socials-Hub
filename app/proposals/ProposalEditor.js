@@ -141,7 +141,12 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const set = (path, value) => setP((cur) => setIn(cur, path, value));
   const f = { p, set, setPage };
 
-  const pages = useMemo(() => proposalPages(p), [p]);
+  // Links used in the PDF (e.g. "View Media"), so they also work in the preview.
+  const [ctx, setCtx] = useState({});
+  useEffect(() => {
+    fetch("/api/proposals/context", { cache: "no-store" }).then((r) => r.json()).then((j) => setCtx(j || {})).catch(() => {});
+  }, []);
+  const pages = useMemo(() => proposalPages(p, ctx), [p, ctx]);
   const current = pages.find((x) => x.key === page) || pages[0];
 
   function pickConsultant(which, name) {
@@ -639,8 +644,16 @@ function BrandedAdPicker({ p, set, setPage }) {
         {msg ? <> <span className="warn">{msg}</span></> : null}
       </div>
       {p.brandedAd ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={p.brandedAd} alt="" style={{ marginTop: 10, width: 140, borderRadius: 8, border: "1px solid #ddd" }} />
+        <div style={{ marginTop: 12 }}>
+          <div className="label"><span>How it sits in the tile</span></div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+            {[["fill", "Fill – centred"], ["top", "Fill – keep the top"], ["bottom", "Fill – keep the bottom"], ["whole", "Show the whole ad"]].map(([v, l]) => (
+              <button key={v} type="button" className={"btn btn-small " + ((p.brandedFit || "fill") === v ? "btn-primary" : "btn-ghost")}
+                onClick={() => { set("brandedFit", v); setPage("branded"); }}>{l}</button>
+            ))}
+          </div>
+          <div className="hint">If anything is cut off, try “keep the top”, “keep the bottom” or “Show the whole ad”.</div>
+        </div>
       ) : null}
     </div>
   );

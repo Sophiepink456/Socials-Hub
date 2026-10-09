@@ -10,6 +10,10 @@ export default function Check({ id, c }) {
   const [err, setErr] = useState("");
   const [text, setText] = useState("");
   const [name, setName] = useState("John Bohan");
+  const [ctx, setCtx] = useState({});
+  useEffect(() => {
+    fetch("/api/proposals/context", { cache: "no-store" }).then((r) => r.json()).then((j) => setCtx(j || {})).catch(() => {});
+  }, []);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
 
@@ -42,7 +46,7 @@ export default function Check({ id, c }) {
   if (err) return <p className="lede">{err}</p>;
   if (!rec) return <p className="lede">Opening the proposal…</p>;
   const p = normalise(rec.data);
-  const pages = proposalPages(p);
+  const pages = proposalPages(p, ctx);
   return (
     <>
       <h1 className="h1">{p.clientName || "Client"} – {p.roleTitle || "Role"}<span className="g">.</span></h1>
