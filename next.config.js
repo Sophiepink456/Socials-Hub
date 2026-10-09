@@ -8,6 +8,8 @@ const nextConfig = {
       "/api/proposals/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
       "/api/proposals/submit": ["./node_modules/@sparticuz/chromium/bin/**/*"],
       "/api/proposals/[id]": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+      // Also used to open websites that only show their pictures once JavaScript runs.
+      "/api/proposals/scrape": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     },
     // Load these from node_modules at run time instead of bundling them.
     serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "sharp"],
