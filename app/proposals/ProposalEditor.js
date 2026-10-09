@@ -140,6 +140,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   }, [p]);
 
   const set = (path, value) => setP((cur) => setIn(cur, path, value));
+  const pickPhoto = (key, url) => setP((cur) => ({ ...cur, [key]: url, photoPos: { ...(cur.photoPos || {}), [key]: undefined } }));
   const pRef = useRef(p);
   pRef.current = p;
   const f = { p, set, setPage };
@@ -515,7 +516,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
                   return (
                     <button key={ph.url} type="button" disabled={!fits} title={fits ? "From the client’s website" : "Too small for this spot"}
                       className={"thumb site" + (p[s.key] === ph.url ? " on" : "") + (fits ? "" : " small")}
-                      onClick={() => { set(s.key, ph.url); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
+                      onClick={() => { pickPhoto(s.key, ph.url); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={ph.url} alt="" loading="lazy" />
                     </button>
@@ -523,7 +524,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
                 })}
                 {STOCK_PHOTOS.map((src) => (
                   <button key={src} type="button" className={"thumb" + (p[s.key] === src ? " on" : "")}
-                    onClick={() => { set(s.key, src); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
+                    onClick={() => { pickPhoto(s.key, src); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={src} alt="" loading="lazy" />
                   </button>
@@ -531,11 +532,15 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
                 <label className="thumb upload" title="Upload a photo">
                   <input type="file" accept="image/*" onChange={async (e) => {
                     const file = e.target.files && e.target.files[0];
-                    if (file) set(s.key, await readImage(file));
+                    if (file) pickPhoto(s.key, await readImage(file));
                   }} />
                   +
                 </label>
               </div>
+              {p[s.key] ? (
+                <PhotoFramer src={p[s.key]} slot={s} pos={(p.photoPos || {})[s.key]}
+                  onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [s.key]: pos } })); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }} />
+              ) : null}
             </div>
           ))}
         </Section>
@@ -701,6 +706,55 @@ function BrandedAdPicker({ p, set, setPage }) {
           <div className="hint">If anything is cut off, try “keep the top”, “keep the bottom” or “Show the whole ad”.</div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// Drag a photo around inside its space. It always covers the space, so moving it only changes
+// which part of the photo shows; it can't leave a gap.
+function PhotoFramer({ src, slot, pos, onChange }) {
+  const box = useRef(null);
+  const drag = useRef(null);
+  const [nat, setNat] = useState(null);
+  const x = pos && pos.x != null ? pos.x : 50;
+  const y = pos && pos.y != null ? pos.y : 50;
+  const W = 320, H = Math.round((W * slot.h) / slot.w);
+  // How far the photo spills past the frame on each side (in frame pixels).
+  let ox = 0, oy = 0;
+  if (nat) {
+    const k = Math.max(W / nat.w, H / nat.h);
+    ox = nat.w * k - W; oy = nat.h * k - H;
+  }
+  const canX = ox > 1, canY = oy > 1;
+  function down(e) {
+    if (!canX && !canY) return;
+    e.preventDefault();
+    drag.current = { sx: e.clientX, sy: e.clientY, x, y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function move(e) {
+    const d = drag.current;
+    if (!d) return;
+    const clamp = (v) => Math.max(0, Math.min(100, v));
+    onChange({
+      x: canX ? Math.round(clamp(d.x - ((e.clientX - d.sx) / ox) * 100)) : 50,
+      y: canY ? Math.round(clamp(d.y - ((e.clientY - d.sy) / oy) * 100)) : 50,
+    });
+  }
+  const up = () => { drag.current = null; };
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div ref={box} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+        style={{ width: W, height: H, maxWidth: "100%", overflow: "hidden", borderRadius: 8, border: "1px solid #ddd", background: "#eee",
+          cursor: canX || canY ? (drag.current ? "grabbing" : "grab") : "default", touchAction: "none", userSelect: "none" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" draggable={false} onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${x}% ${y}%`, display: "block", pointerEvents: "none" }} />
+      </div>
+      <div className="hint">
+        {canX || canY ? `Drag the picture to choose which part shows (${canX && canY ? "any direction" : canX ? "left and right" : "up and down"}).` : "This picture fits the space exactly, so there's nothing to move."}
+        {pos && (pos.x !== 50 || pos.y !== 50) ? <> <button type="button" className="link" onClick={() => onChange({ x: 50, y: 50 })}>Centre it</button></> : null}
+      </div>
     </div>
   );
 }
