@@ -343,6 +343,14 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               </div>
             ) : null}
           </div>
+          {p.clientLogo ? (
+            <div className="row">
+              <label className="label" htmlFor="logoSize"><span>Logo size <span className="opt">({Number(p.logoSize) || 100}%)</span></span></label>
+              <input id="logoSize" type="range" min={60} max={250} step={5} value={Number(p.logoSize) || 100} style={{ width: "100%" }}
+                onChange={(e) => { set("logoSize", Number(e.target.value)); setPage("title"); }} />
+              {(Number(p.logoSize) || 100) !== 100 ? <button type="button" className="link" onClick={() => set("logoSize", 100)}>Back to standard size</button> : null}
+            </div>
+          ) : null}
           <Check label="Keep the logo’s own colours (otherwise it’s shown in white)" path="logoColour" page="title" {...f} />
           <Check label="Is this an NDA-led confidential search?" path="nda" page="contents" {...f}
             hint="Removes the Branded Campaigns page and “Branded Media Adverts”, and renumbers the contents." />
