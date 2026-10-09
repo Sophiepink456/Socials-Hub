@@ -120,6 +120,8 @@ export default function Settings() {
         </tbody></table>
       </div>
 
+      {data.checks.ads ? <AdNames code={code} /> : null}
+
       <div className="panel">
         <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals</h3>
         {data.proposals.length ? (
@@ -138,6 +140,84 @@ export default function Settings() {
           </table>
         ) : <p className="hint">No proposals submitted yet.</p>}
       </div>
+    </div>
+  );
+}
+
+// Fix the names shown in the branded ads dropdown. What's typed here always wins over the automatic label.
+function AdNames({ code }) {
+  const [ads, setAds] = useState(null);
+  const [err, setErr] = useState("");
+  const [edits, setEdits] = useState({});
+  const [filter, setFilter] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    setErr("");
+    try {
+      const r = await fetch("/api/settings/ads", { headers: { "x-passcode": code }, cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setAds(j.ads);
+    } catch (e) { setErr(e.message || "Couldn't load the ads."); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const val = (a, k) => (edits[a.id] && k in edits[a.id] ? edits[a.id][k] : k === "hidden" ? a.hidden : a[k]);
+  const change = (a, k, v) => setEdits((e) => ({ ...e, [a.id]: { client: val(a, "client"), jobTitle: val(a, "jobTitle"), hidden: val(a, "hidden"), ...(e[a.id] || {}), [k]: v } }));
+  const reset = (a) => setEdits((e) => ({ ...e, [a.id]: { client: "", jobTitle: "", hidden: false, reset: true } }));
+
+  async function save() {
+    setBusy(true); setMsg("");
+    try {
+      const r = await fetch("/api/settings/ads", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ overrides: edits }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setEdits({}); setMsg("Saved. The dropdown now uses these names.");
+      await load();
+    } catch (e) { setMsg(e.message || "Couldn't save."); } finally { setBusy(false); }
+  }
+
+  const q = filter.trim().toLowerCase();
+  const shown = (ads || []).filter((a) => !q || `${a.client} ${a.jobTitle} ${a.name}`.toLowerCase().includes(q));
+  const changed = Object.keys(edits).length;
+  return (
+    <div className="panel" style={{ gridColumn: "1 / -1" }}>
+      <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Branded ads – names in the dropdown</h3>
+      <p className="hint" style={{ marginTop: 0 }}>Correct any client or job title, then Save. Tick “Hide” to keep an ad out of the dropdown. Your names stay even if the file is updated.</p>
+      {err ? <div className="hint warn">{err}</div> : null}
+      {!ads && !err ? <p className="hint">Loading the ads…</p> : null}
+      {ads ? (
+        <>
+          <input className="input" placeholder="Filter by client, job title or file name" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 12 }} />
+          <table className="table">
+            <thead><tr><th style={{ width: 90 }}>Ad</th><th>Client</th><th>Job title</th><th style={{ width: 60 }}>Hide</th></tr></thead>
+            <tbody>
+              {shown.map((a) => (
+                <tr key={a.id} style={val(a, "hidden") ? { opacity: 0.5 } : null}>
+                  <td>
+                    <a href={`/api/proposals/ads/thumb?id=${a.id}&u=${encodeURIComponent(a.updated)}`} target="_blank" rel="noreferrer" title={a.name}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/proposals/ads/thumb?id=${a.id}&u=${encodeURIComponent(a.updated)}`} alt="" loading="lazy" style={{ width: 80, height: 80, objectFit: "contain", background: "#f3f3f3", borderRadius: 6 }} />
+                    </a>
+                  </td>
+                  <td><input className="input" value={val(a, "client")} placeholder={a.autoClient} onChange={(e) => change(a, "client", e.target.value)} /></td>
+                  <td>
+                    <input className="input" value={val(a, "jobTitle")} placeholder={a.autoJob} onChange={(e) => change(a, "jobTitle", e.target.value)} />
+                    {a.edited && !(edits[a.id] && edits[a.id].reset) ? <button type="button" className="link" onClick={() => reset(a)}>Go back to the automatic name</button> : null}
+                  </td>
+                  <td style={{ textAlign: "center" }}><input type="checkbox" checked={!!val(a, "hidden")} onChange={(e) => change(a, "hidden", e.target.checked)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {msg ? <div className="done-msg" style={{ margin: "10px 0" }}>{msg}</div> : null}
+          <div className="actions">
+            <button className="btn btn-primary" type="button" onClick={save} disabled={busy || !changed}>{busy ? "Saving…" : changed ? `Save ${changed} change${changed === 1 ? "" : "s"}` : "No changes"}</button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
