@@ -52,6 +52,16 @@ export default function Settings() {
     } catch (e) { setMsg(e.message || "Couldn't save."); } finally { setBusy(""); }
   }
 
+  async function testClaude() {
+    setBusy("Testing…"); setMsg("");
+    try {
+      const r = await fetch("/api/settings/test-claude", { method: "POST", headers: { "x-passcode": code } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setMsg("Claude is working: photos, logo search, About drafts and the spelling check can all use it.");
+    } catch (e) { setMsg(`Claude test failed: ${e.message}`); } finally { setBusy(""); }
+  }
+
   async function testEmail() {
     setBusy("Sending…"); setMsg("");
     try {
@@ -121,7 +131,7 @@ export default function Settings() {
           <input id="ads" className="input" value={form.ads} placeholder="https://script.google.com/macros/s/…/exec" onChange={(e) => setForm({ ...form, ads: e.target.value })} />
           <div className="hint">Feeds the branded ads dropdown from the Drive folder. New ads appear automatically.</div>
         </div>
-        {msg ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
+        {msg && !/^Claude/.test(msg) ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
         <div className="actions">
           <button className="btn btn-primary" type="button" onClick={save} disabled={!!busy}>{busy === "Saving…" ? busy : "Save settings"}</button>
           <button className="btn btn-ghost" type="button" onClick={testEmail} disabled={!!busy}>{busy === "Sending…" ? busy : "Send test email"}</button>
@@ -132,10 +142,11 @@ export default function Settings() {
         <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Connections</h3>
         <table className="table"><tbody>
           <tr><td>Storage (Vercel Blob)</td><td>{ok(data.checks.storage)}</td></tr>
-          <tr><td>Claude (photos, logo, spelling)</td><td>{ok(data.checks.claude)}</td></tr>
+          <tr><td>Claude (photos, logo, About, spelling)</td><td>{ok(data.checks.claude)} <button type="button" className="link" onClick={testClaude} disabled={!!busy}>{busy === "Testing…" ? "Testing…" : "Test Claude"}</button></td></tr>
           <tr><td>Emails (Zapier webhook)</td><td>{ok(data.checks.email)}</td></tr>
           <tr><td>Branded ads (Google Drive)</td><td>{ok(data.checks.ads)}</td></tr>
         </tbody></table>
+        {msg && /^Claude/.test(msg) ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
       </div>
 
       {data.checks.ads ? <AdNames code={code} /> : null}
