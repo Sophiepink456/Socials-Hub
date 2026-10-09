@@ -238,6 +238,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
       });
       const r = await res.json();
       if (!res.ok) throw new Error(r.error || "Couldn't write the About section.");
+      if (!r.about || !r.about.trim()) throw new Error("The draft came back empty. Please try again.");
       if (!(pRef.current.about || "").trim()) {
         set("about", r.about);
         setAboutState({ busy: false, msg: "Drafted from the client's website. Read it through and edit anything that isn't right.", draft: "" });
