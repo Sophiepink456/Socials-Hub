@@ -121,6 +121,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const [checkBusy, setCheckBusy] = useState(false);
   const [submit, setSubmit] = useState(null); // {name, email} while the send panel is open
   const [done, setDone] = useState("");
+  const [savedDraft, setSavedDraft] = useState(null); // an unfinished proposal from last time
   const [sendTo, setSendTo] = useState(record ? (record.submittedBy && record.submittedBy.email) || "" : "");
   const loaded = useRef(false);
 
@@ -128,13 +129,16 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   useEffect(() => {
     if (review) return;
     try {
+      // Always open on a clean proposal. An unfinished one is kept aside and offered back,
+      // so nothing is lost if the page was closed by mistake.
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
-      if (d) setP(normalise(d));
+      if (d && (d.clientName || d.roleTitle || d.about || d.understanding)) setSavedDraft(d);
     } catch {}
-    loaded.current = true;
   }, []);
   useEffect(() => {
-    if (!loaded.current || review) return;
+    // Only start saving once something has been typed into this new proposal.
+    if (!loaded.current) { loaded.current = JSON.stringify(p) !== JSON.stringify(blankProposal()); if (!loaded.current) return; }
+    if (review) return;
     const t = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(p)); } catch {} }, 400);
     return () => clearTimeout(t);
   }, [p]);
@@ -283,6 +287,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
       const r = await res.json();
       if (!res.ok) throw new Error(r.error);
       setSubmit(null);
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       setDone("Sent for proof-reading. You'll get the finished PDF by email once it's been checked.");
     } catch (e) {
       alert(e.message || "Sorry, it didn't send. Try again in a moment.");
@@ -317,6 +322,14 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   return (
     <div className="peditor">
       <div className="pform">
+        {savedDraft && !review ? (
+          <div className="done-msg" style={{ marginBottom: 14 }}>
+            You have an unfinished proposal{savedDraft.clientName ? ` for ${savedDraft.clientName}` : ""}{savedDraft.roleTitle ? ` (${savedDraft.roleTitle})` : ""}.{" "}
+            <button type="button" className="link" onClick={() => { setP(normalise(savedDraft)); setSavedDraft(null); }}>Carry on with it</button>
+            {" or "}
+            <button type="button" className="link" onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setSavedDraft(null); }}>start fresh</button>.
+          </div>
+        ) : null}
         <Section title="1. Client & role" open={open === "client"} onToggle={() => toggle("client")} done={!!(p.clientName && p.roleTitle)}>
           <Text label="Client name" path="clientName" max={LIMITS.clientName} page="title" placeholder="e.g. Westmarq" {...f} />
           <Text label="Role title" path="roleTitle" page="title" placeholder="e.g. Chief Technology Officer" {...f}
