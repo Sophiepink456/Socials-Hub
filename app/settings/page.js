@@ -7,7 +7,7 @@ export default function SettingsPage() {
     <main className="wrap">
       <a href="/" className="back">← Marketing Hub</a>
       <h1 className="h1">Settings<span className="g">.</span></h1>
-      <p className="lede">Who proposals go to, links used in the PDFs, and every proposal in progress.</p>
+      <p className="lede">Every proposal in progress, who proposals go to, and links used in the PDFs.</p>
       <Settings />
     </main>
   );
