@@ -116,6 +116,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const [open, setOpen] = useState(review ? "" : "client");
   const [busy, setBusy] = useState("");
   const [siteState, setSiteState] = useState({ busy: false, msg: "" });
+  const [aboutState, setAboutState] = useState({ busy: false, msg: "", draft: "" });
   const [issues, setIssues] = useState(null); // null = not checked yet
   const [checkBusy, setCheckBusy] = useState(false);
   const [submit, setSubmit] = useState(null); // {name, email} while the send panel is open
@@ -139,6 +140,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   }, [p]);
 
   const set = (path, value) => setP((cur) => setIn(cur, path, value));
+  const pRef = useRef(p);
+  pRef.current = p;
   const f = { p, set, setPage };
 
   // Links used in the PDF (e.g. "View Media"), so they also work in the preview.
@@ -193,6 +196,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   async function findFromWebsite() {
     if (!p.clientWebsite.trim()) { setSiteState({ busy: false, msg: "Add the client's website address first." }); return; }
     setSiteState({ busy: true, msg: "Reading the website and picking photos… this takes up to a minute." });
+    draftAboutFromWebsite();
     try {
       const res = await fetch("/api/proposals/scrape", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -215,6 +219,28 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
       setPage("title");
     } catch (e) {
       setSiteState({ busy: false, msg: e.message });
+    }
+  }
+
+  // ---- client website: About section draft ----
+  async function draftAboutFromWebsite() {
+    if (!p.clientWebsite.trim()) { setAboutState({ busy: false, msg: "Add the client's website address first (section 1).", draft: "" }); return; }
+    setAboutState({ busy: true, msg: "Writing the About section from the client's website…", draft: "" });
+    try {
+      const res = await fetch("/api/proposals/about", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: p.clientWebsite, company: p.clientName }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error || "Couldn't write the About section.");
+      if (!(pRef.current.about || "").trim()) {
+        set("about", r.about);
+        setAboutState({ busy: false, msg: "Drafted from the client's website. Read it through and edit anything that isn't right.", draft: "" });
+      } else {
+        setAboutState({ busy: false, msg: "A new draft from the website is ready. Your current text has been kept.", draft: r.about });
+      }
+    } catch (e) {
+      setAboutState({ busy: false, msg: e.message, draft: "" });
     }
   }
 
@@ -297,9 +323,9 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <Text label="Client website" path="clientWebsite" type="url" page="title" placeholder="e.g. www.westmarq.co.uk" {...f} />
           <div className="row">
             <button type="button" className="btn btn-ghost btn-small" onClick={findFromWebsite} disabled={siteState.busy}>
-              {siteState.busy ? "Looking…" : "Get photos & logo from the website"}
+              {siteState.busy ? "Looking…" : "Get photos, logo & About text from the website"}
             </button>
-            {siteState.msg ? <div className="hint">{siteState.msg}</div> : <div className="hint">Pulls the client’s logo and general photos (no headshots or news pictures) and places them on the pages.</div>}
+            {siteState.msg ? <div className="hint">{siteState.msg}</div> : <div className="hint">Pulls the client’s logo and general photos (no headshots or news pictures) and places them on the pages, and drafts the About section from their website.</div>}
           </div>
           <div className="row">
             <label className="label"><span>Client logo <span className="opt">(found automatically, or upload a PNG/SVG)</span></span></label>
@@ -351,6 +377,18 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
         <Section title={`4. About ${p.clientName || "the client"}`} open={open === "about"} onToggle={() => toggle("about")} done={!!p.about}>
           <Text label="About the client" path="about" max={LIMITS.about} multiline rows={12} page="about" {...f} hint="Start a new line for a new paragraph." />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: -6 }}>
+            <button type="button" className="btn btn-ghost btn-small" onClick={draftAboutFromWebsite} disabled={aboutState.busy}>
+              {aboutState.busy ? "Writing…" : p.about ? "Redraft from the website" : "Draft from the website"}
+            </button>
+            {aboutState.draft ? (
+              <button type="button" className="btn btn-primary btn-small" onClick={() => { set("about", aboutState.draft); setAboutState({ busy: false, msg: "Replaced with the website draft. Edit as needed.", draft: "" }); setPage("about"); }}>
+                Use the new draft
+              </button>
+            ) : null}
+          </div>
+          {aboutState.msg ? <div className="hint">{aboutState.msg}</div> : null}
+          {aboutState.draft ? <div className="hint" style={{ whiteSpace: "pre-line", background: "#f6f6f6", padding: 10, borderRadius: 8 }}>{aboutState.draft}</div> : null}
         </Section>
 
         <Section title="5. Role Profile" open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
