@@ -385,7 +385,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
         {!p.nda ? (
           <Section title="7. Branded Campaigns" open={open === "branded"} onToggle={() => toggle("branded")} done>
-            <p className="hint" style={{ marginTop: 0 }}>Coming next: pick one of our branded ads for the first tile. Until then the page shows our standard examples.</p>
+            <BrandedAdPicker p={p} set={set} setPage={setPage} />
             <button type="button" className="btn btn-ghost btn-small" onClick={() => setPage("branded")}>Show this page</button>
           </Section>
         ) : null}
@@ -579,6 +579,73 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 }
 
 // Shows a 1920 x 1080 page shrunk to fit the column.
+// Dropdown of our branded ads from the Drive folder, labelled "Client – Job title", A–Z by client.
+function BrandedAdPicker({ p, set, setPage }) {
+  const [state, setState] = useState({ loading: true, ads: [], pending: 0, error: "" });
+  const [filter, setFilter] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    let stop = false;
+    async function load(tries = 0) {
+      try {
+        const r = await fetch("/api/proposals/ads", { cache: "no-store" });
+        const j = await r.json();
+        if (stop) return;
+        if (!r.ok) throw new Error(j.error);
+        setState({ loading: false, ads: j.ads || [], pending: j.pending || 0, error: "" });
+        // New ads are read in batches; keep going until every one has a label.
+        if (j.pending && tries < 20) load(tries + 1);
+      } catch (e) {
+        if (!stop) setState((s) => ({ ...s, loading: false, error: e.message || "Couldn't load the branded ads." }));
+      }
+    }
+    load();
+    return () => { stop = true; };
+  }, []);
+
+  async function choose(id) {
+    setMsg("");
+    if (!id) { set("brandedAdId", ""); set("brandedAd", ""); return; }
+    const ad = state.ads.find((a) => a.id === id);
+    setBusy(true);
+    try {
+      const r = await fetch("/api/proposals/ads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, updated: ad && ad.updated }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      set("brandedAdId", id);
+      set("brandedAd", j.url);
+      setPage("branded");
+    } catch (e) { setMsg(e.message || "Couldn't fetch that ad."); } finally { setBusy(false); }
+  }
+
+  const q = filter.trim().toLowerCase();
+  const shown = q ? state.ads.filter((a) => a.label.toLowerCase().includes(q) || a.id === p.brandedAdId) : state.ads;
+  return (
+    <div className="row">
+      <label className="label" htmlFor="ad"><span>Branded ad for the first tile</span></label>
+      {state.ads.length > 12 ? (
+        <input className="input" placeholder="Type to filter by client or job title" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 8 }} />
+      ) : null}
+      <select id="ad" className="input" value={p.brandedAdId || ""} disabled={busy || state.loading} onChange={(e) => choose(e.target.value)}>
+        <option value="">{state.loading ? "Loading our branded ads…" : "None – keep our standard example"}</option>
+        {shown.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+      </select>
+      <div className="hint">
+        {busy ? "Fetching the ad…" : state.error ? <span className="warn">{state.error}</span>
+          : state.pending ? `Reading ${state.pending} new ad${state.pending === 1 ? "" : "s"} to label them. Some may show a file name for a minute.`
+          : `${state.ads.length} ads from the Drive folder. New ones appear automatically.`}
+        {msg ? <> <span className="warn">{msg}</span></> : null}
+      </div>
+      {p.brandedAd ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={p.brandedAd} alt="" style={{ marginTop: 10, width: 140, borderRadius: 8, border: "1px solid #ddd" }} />
+      ) : null}
+    </div>
+  );
+}
+
 function ScaledPage({ children }) {
   const box = useRef(null);
   const [w, setW] = useState(640);

@@ -24,6 +24,7 @@ export default function Settings() {
       finalChecker: j.settings.finalChecker || "",
       media1: (j.settings.mediaLinks || [])[0] || "",
       media2: (j.settings.mediaLinks || [])[1] || "",
+      ads: j.settings.adsScriptUrl || "",
     });
   }
 
@@ -42,6 +43,7 @@ export default function Settings() {
           proofreaders: form.proofreaders.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean),
           finalChecker: form.finalChecker.trim(),
           mediaLinks: [form.media1.trim(), form.media2.trim()],
+          adsScriptUrl: form.ads.trim(),
         } }),
       });
       const j = await r.json();
@@ -96,6 +98,11 @@ export default function Settings() {
           <label className="label" htmlFor="m2"><span>“View Media” link under the 3rd example (video)</span></label>
           <input id="m2" className="input" value={form.media2} placeholder="https://…" onChange={(e) => setForm({ ...form, media2: e.target.value })} />
         </div>
+        <div className="row">
+          <label className="label" htmlFor="ads"><span>Branded ads link (Google Apps Script web app URL)</span></label>
+          <input id="ads" className="input" value={form.ads} placeholder="https://script.google.com/macros/s/…/exec" onChange={(e) => setForm({ ...form, ads: e.target.value })} />
+          <div className="hint">Feeds the branded ads dropdown from the Drive folder. New ads appear automatically.</div>
+        </div>
         {msg ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
         <div className="actions">
           <button className="btn btn-primary" type="button" onClick={save} disabled={!!busy}>{busy === "Saving…" ? busy : "Save settings"}</button>
@@ -109,6 +116,7 @@ export default function Settings() {
           <tr><td>Storage (Vercel Blob)</td><td>{ok(data.checks.storage)}</td></tr>
           <tr><td>Claude (photos, logo, spelling)</td><td>{ok(data.checks.claude)}</td></tr>
           <tr><td>Emails (Zapier webhook)</td><td>{ok(data.checks.email)}</td></tr>
+          <tr><td>Branded ads (Google Drive)</td><td>{ok(data.checks.ads)}</td></tr>
         </tbody></table>
       </div>
 

@@ -27,7 +27,7 @@ export async function GET(req) {
   return Response.json({
     settings,
     proposals,
-    checks: { storage: hasStore(), claude: hasClaude(), email: !!process.env.ZAPIER_HOOK_URL },
+    checks: { storage: hasStore(), claude: hasClaude(), email: !!process.env.ZAPIER_HOOK_URL, ads: !!(settings.adsScriptUrl || process.env.ADS_SCRIPT_URL) },
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
