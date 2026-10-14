@@ -1092,7 +1092,11 @@ function ExtraPages({ p, setP, setPage, pages }) {
                     <h4 className="group-title" style={{ fontSize: 15 }}>Text and pictures on this page</h4>
                     {st.fields.map((f) => {
                       const val = e.v && e.v[f.k] !== undefined ? e.v[f.k] : "";
-                      const setVal = (nv) => update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
+                      // Body text has the same limits as the original page, with the same cut-off and popup.
+                      const setVal = (nv) => {
+                        if (f.max && typeof nv === "string" && nv.length > f.max) { limitHit(f.label, f.max, nv.length); nv = nv.slice(0, f.max); }
+                        update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
+                      };
                       if (f.kind === "image") {
                         return (
                           <div key={f.k} className="row">
@@ -1118,7 +1122,7 @@ function ExtraPages({ p, setP, setPage, pages }) {
                       }
                       return (
                         <div key={f.k} className="row">
-                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span></label>
+                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span>{f.max ? <Count value={val} max={f.max} /> : null}</label>
                           {f.kind === "text"
                             ? <input id={`${e.id}-${f.k}`} className="input" value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />
                             : <textarea id={`${e.id}-${f.k}`} className="input" rows={f.kind === "lines" ? 4 : 5} value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />}
