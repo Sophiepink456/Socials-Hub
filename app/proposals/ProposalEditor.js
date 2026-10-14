@@ -651,7 +651,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         </Section>
 
         {review ? (
-          <Section title={`Extra pages${(p.extraPages || []).length ? ` (${(p.extraPages || []).length})` : ""} (back office only)`} open={open === "extra"} onToggle={() => toggle("extra")} done>
+          <Section title={`Add or remove pages${(p.extraPages || []).length || (p.hiddenPages || []).length ? ` (${(p.extraPages || []).length} added, ${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "extra"} onToggle={() => toggle("extra")} done>
             <ExtraPages p={p} setP={setP} setPage={setPage} pages={pages} />
           </Section>
         ) : null}
@@ -1030,8 +1030,33 @@ function ExtraPages({ p, setP, setPage, pages }) {
     } catch (err) { alert(err.message || "Couldn't upload that picture."); } finally { setBusy(""); }
   }
 
+  const hidden = new Set(p.hiddenPages || []);
+  const STANDARD = [
+    ["title", "Title"], ["contents", "Contents"], ["understanding", "Our Understanding"], ["about", "About"], ["role", "Role Profile"],
+    ["approach", "Our Approach"], ["branded", "Branded Campaigns"], ["candidate", "Candidate Packs"], ["search", "Search Process"],
+    ["credentials", "Credentials"], ["terms", "Terms & Fees"], ["next", "Next Steps"], ["appendices", "Appendices"], ["end", "End"],
+  ].filter(([k]) => k !== "branded" || !p.nda).filter(([k]) => k !== "appendices" || p.appendicesOn);
+  function toggleStd(k, keep) {
+    setP((cur) => {
+      const h = new Set(cur.hiddenPages || []);
+      if (keep) h.delete(k); else h.add(k);
+      return { ...cur, hiddenPages: [...h] };
+    });
+    if (keep) setPage(k);
+  }
   return (
     <>
+      <h4 className="group-title" style={{ fontSize: 15, marginTop: 0 }}>Standard pages</h4>
+      <p className="hint" style={{ marginTop: 0 }}>Untick a page to remove it from this proposal. Page numbers and the Contents page update automatically. Tick it again to put it back.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px", marginBottom: 18 }}>
+        {STANDARD.map(([k, label]) => (
+          <label key={k} className="check" style={{ opacity: hidden.has(k) ? 0.55 : 1 }}>
+            <input type="checkbox" checked={!hidden.has(k)} onChange={(ev) => toggleStd(k, ev.target.checked)} />
+            {label}{hidden.has(k) ? " (removed)" : ""}
+          </label>
+        ))}
+      </div>
+      <h4 className="group-title" style={{ fontSize: 15 }}>Added pages</h4>
       <p className="hint" style={{ marginTop: 0 }}>Add pages using any of the proposal’s page designs. Every word and picture on them can be changed, and you choose where each one goes. Page numbers and the Contents page update automatically. Consultants don’t see this section.</p>
       <div className="row" style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
         <div>
