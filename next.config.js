@@ -11,6 +11,7 @@ const nextConfig = {
       // Also used to open websites that only show their pictures once JavaScript runs.
       "/api/proposals/scrape": ["./node_modules/@sparticuz/chromium/bin/**/*"],
       "/api/proposals/about": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+      "/api/proposals/site-extras": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     },
     // Load these from node_modules at run time instead of bundling them.
     serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "sharp"],

@@ -19,6 +19,7 @@ export async function GET(req) {
       id: r.id,
       client: r.data.clientName,
       role: r.data.roleTitle,
+      type: r.data.kind === "candidate" ? "Candidate pack" : "Proposal",
       consultant: r.submittedBy && r.submittedBy.name,
       status: STATUS[r.status] || r.status,
       updatedAt: r.updatedAt || r.createdAt,
@@ -29,7 +30,8 @@ export async function GET(req) {
   try {
     drafts = (await listDrafts(60)).map((d) => ({
       id: d.id, client: d.data.clientName, role: d.data.roleTitle, consultant: d.savedBy && (d.savedBy.name || d.savedBy.email),
-      updatedAt: d.updatedAt, link: `/proposals?draft=${d.id}&k=${d.key}`,
+      type: d.data.kind === "candidate" ? "Candidate pack" : "Proposal",
+      updatedAt: d.updatedAt, link: `${d.data.kind === "candidate" ? "/proposals/candidate-pack" : "/proposals"}?draft=${d.id}&k=${d.key}`,
     }));
   } catch (e) { console.error(e); }
   return Response.json({

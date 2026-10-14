@@ -8,6 +8,7 @@
 @font-face { font-family: "AreaP"; src: url("/proposal/fonts/Area-Black.woff2") format("woff2"); font-weight: 900; font-display: block; }
 
 @font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
 
 .pp {
   position: relative;
@@ -28,6 +29,7 @@
 /* Figma "vertical trim: cap height to baseline" */
 .pp .trim { text-box: trim-both cap alphabetic; }
 .pp .g { color: #93bf20; }
+.pp .acc { color: var(--acc, #88cdf6); }
 .pp .col { display: flex; flex-direction: column; }
 .pp .row { display: flex; flex-direction: row; }
 .pp .pre { white-space: pre-line; }

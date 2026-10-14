@@ -97,14 +97,15 @@ export default function Settings() {
   return (
     <div className="settings-grid">
       <div className="panel">
-        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals</h3>
+        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals & candidate packs</h3>
         {data.proposals.length ? (
           <table className="table">
-            <thead><tr><th>Client – role</th><th>Consultant</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+            <thead><tr><th>Client – role</th><th>Type</th><th>Consultant</th><th>Status</th><th>Updated</th><th></th></tr></thead>
             <tbody>
               {data.proposals.map((r) => (
                 <tr key={r.id}>
                   <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                  <td>{r.type}</td>
                   <td>{r.consultant}</td>
                   <td>{r.status}</td>
                   <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
@@ -113,16 +114,17 @@ export default function Settings() {
               ))}
             </tbody>
           </table>
-        ) : <p className="hint">No proposals submitted yet.</p>}
+        ) : <p className="hint">Nothing submitted yet.</p>}
         {data.drafts && data.drafts.length ? (
           <>
             <h3 className="group-title">Drafts not sent yet</h3>
             <table className="table">
-              <thead><tr><th>Client – role</th><th>Saved by</th><th>Last saved</th><th></th></tr></thead>
+              <thead><tr><th>Client – role</th><th>Type</th><th>Saved by</th><th>Last saved</th><th></th></tr></thead>
               <tbody>
                 {data.drafts.map((r) => (
                   <tr key={r.id}>
                     <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                    <td>{r.type}</td>
                     <td>{r.consultant}</td>
                     <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
                     <td><button type="button" className="link" onClick={() => remove("draft", r)}>Remove</button></td>

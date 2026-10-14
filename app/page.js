@@ -8,6 +8,7 @@ const TOOLS = [
     title: "Proposals & Candidate Packs",
     blurb: "Client proposals and candidate packs, ready to send.",
     href: "/proposals",
+    cta: "Start a proposal or pack",
     icon: "doc",
     image: "/proposal/preview.jpg",
   },
@@ -58,7 +59,7 @@ function ToolCard({ t }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={t.image} alt="" className="tool-photo" />
         ) : <div className="tool-icon">{ICONS[t.icon]}</div>}
-        <span className={"tool-tag" + (t.href ? " live" : "")}>{t.href ? (t.external ? "Open in Google Drive ↗" : "Start a proposal") : "Coming soon"}</span>
+        <span className={"tool-tag" + (t.href ? " live" : "")}>{t.href ? (t.external ? "Open in Google Drive ↗" : (t.cta || "Start")) : "Coming soon"}</span>
       </div>
       <div className="card-meta">{t.blurb}</div>
     </>

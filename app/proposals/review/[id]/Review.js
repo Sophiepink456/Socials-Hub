@@ -3,6 +3,7 @@
 // The proof-reader's view: the same form, pre-filled, with save / send buttons.
 import { useEffect, useState } from "react";
 import ProposalEditor from "../../ProposalEditor";
+import CandidateEditor from "../../CandidateEditor";
 
 export default function Review({ id, k }) {
   const [rec, setRec] = useState(null);
@@ -11,15 +12,16 @@ export default function Review({ id, k }) {
   useEffect(() => {
     fetch(`/api/proposals/${id}?k=${encodeURIComponent(k)}`, { cache: "no-store" })
       .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setRec(j); })
-      .catch((e) => setErr(e.message || "Couldn't open this proposal."));
+      .catch((e) => setErr(e.message || "Couldn't open this."));
   }, [id, k]);
 
   if (err) return <p className="lede">{err}</p>;
-  if (!rec) return <p className="lede">Opening the proposal…</p>;
+  if (!rec) return <p className="lede">Opening…</p>;
   const d = rec.data;
   return (
     <>
       <h1 className="h1">{d.clientName || "Client"} – {d.roleTitle || "Role"}<span className="g">.</span></h1>
+      <p className="hint" style={{ marginTop: -8 }}>{d.kind === "candidate" ? "Candidate pack" : "Proposal"}</p>
       <div className="review-banner">
         <span className="status">{rec.statusLabel}</span>
         <span className="hint" style={{ marginLeft: 10 }}>
@@ -33,7 +35,9 @@ export default function Review({ id, k }) {
           </div>
         ))}
       </div>
-      <ProposalEditor mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />
+      {d.kind === "candidate"
+        ? <CandidateEditor mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />
+        : <ProposalEditor mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />}
     </>
   );
 }

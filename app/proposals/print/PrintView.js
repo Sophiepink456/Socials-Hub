@@ -3,8 +3,9 @@
 // Every proposal page stacked one per printed page. Headless Chrome loads this
 // with the proposal in window.__PROPOSAL__ and prints it to PDF.
 import { useEffect, useState } from "react";
-import { proposalPages } from "../../../lib/proposal/pages";
-import { normalise, sampleProposal } from "../../../lib/proposal/data";
+import { sampleProposal } from "../../../lib/proposal/data";
+import { samplePack } from "../../../lib/candidate/data";
+import { normaliseDoc, docPages } from "../../../lib/docs";
 
 export default function PrintView() {
   const [data, setData] = useState(null);
@@ -14,7 +15,8 @@ export default function PrintView() {
     if (!p) {
       try { p = JSON.parse(sessionStorage.getItem("proposal-print") || "null"); } catch { p = null; }
     }
-    setData({ p: normalise(p || sampleProposal()), ctx: (window.__PROPOSAL_CTX__ || {}) });
+    const sample = /[?&]sample=pack/.test(window.location.search) ? samplePack() : sampleProposal();
+    setData({ p: normaliseDoc(p || sample), ctx: (window.__PROPOSAL_CTX__ || {}) });
   }, []);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function PrintView() {
         .print-root .sheet { width: 1920px; height: 1080px; page-break-after: always; break-after: page; overflow: hidden; }
         .print-root .sheet:last-child { page-break-after: auto; break-after: auto; }
       `}</style>
-      {proposalPages(data.p, data.ctx).map((pg) => (
+      {docPages(data.p, data.ctx).map((pg) => (
         <div key={pg.key} className="sheet">{pg.el}</div>
       ))}
     </div>

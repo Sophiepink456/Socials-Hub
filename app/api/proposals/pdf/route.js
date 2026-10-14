@@ -1,5 +1,5 @@
 // Download the proposal as a PDF (no saving).
-import { normalise } from "../../../../lib/proposal/data";
+import { normaliseDoc as normalise } from "../../../../lib/docs";
 import { renderPdf, pdfName } from "../../../../lib/proposal/pdf";
 import { getSettings, pageContext } from "../../../../lib/server/settings";
 

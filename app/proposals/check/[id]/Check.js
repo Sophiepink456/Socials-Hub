@@ -2,8 +2,7 @@
 
 // The final checker's view: every page, then approve or leave comments.
 import { useEffect, useRef, useState } from "react";
-import { proposalPages } from "../../../../lib/proposal/pages";
-import { normalise } from "../../../../lib/proposal/data";
+import { normaliseDoc, docPages, docWord } from "../../../../lib/docs";
 
 export default function Check({ id, c }) {
   const [rec, setRec] = useState(null);
@@ -45,12 +44,12 @@ export default function Check({ id, c }) {
 
   if (err) return <p className="lede">{err}</p>;
   if (!rec) return <p className="lede">Opening the proposal…</p>;
-  const p = normalise(rec.data);
-  const pages = proposalPages(p, ctx);
+  const p = normaliseDoc(rec.data);
+  const pages = docPages(p, ctx);
   return (
     <>
       <h1 className="h1">{p.clientName || "Client"} – {p.roleTitle || "Role"}<span className="g">.</span></h1>
-      <p className="lede">Read through each page, then approve it or leave comments for changes. {rec.pdf ? <a href={rec.pdf} target="_blank" rel="noreferrer">Open the PDF</a> : null}</p>
+      <p className="lede">This is a {docWord(p)}. Read through each page, then approve it or leave comments for changes. {rec.pdf ? <a href={rec.pdf} target="_blank" rel="noreferrer">Open the PDF</a> : null}</p>
       <div className="pages-scroll">
         {pages.map((pg, i) => (
           <div key={pg.key}>
