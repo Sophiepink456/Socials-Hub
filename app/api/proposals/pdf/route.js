@@ -1,7 +1,7 @@
 // Download the proposal as a PDF (no saving).
 import { normalise } from "../../../../lib/proposal/data";
 import { renderPdf, pdfName } from "../../../../lib/proposal/pdf";
-import { getSettings } from "../../../../lib/server/settings";
+import { getSettings, pageContext } from "../../../../lib/server/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export async function POST(req) {
   const proposal = normalise(body && body.proposal);
   try {
     const s = await getSettings();
-    const pdf = await renderPdf(proposal, new URL(req.url).origin, { mediaLinks: s.mediaLinks });
+    const pdf = await renderPdf(proposal, new URL(req.url).origin, pageContext(s));
     return new Response(pdf, {
       headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfName(proposal)}"`, "Cache-Control": "no-store" },
     });
