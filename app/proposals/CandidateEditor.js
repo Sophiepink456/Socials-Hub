@@ -2,7 +2,7 @@
 
 // The candidate pack form: fill in each section and the pack builds alongside.
 // Same route as proposals: Save draft, send for proof-reading, then the back office checks it.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { packPages } from "../../lib/candidate/pages";
 import {
   CONSULTANTS, PACK_LIMITS as L, PACK_TEXT, PACK_WORDING, PACK_PHOTO_SLOTS, DEFAULT_ACCENT, DEFAULT_DARK,
@@ -103,6 +103,25 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
   const f = { p, set, setPage };
   const pages = useMemo(() => packPages(p), [p]);
   const current = pages.find((x) => x.key === page) || pages[0];
+
+  // Pages with a text column that can fill up: every page is laid out off screen and measured.
+  // If a change makes a column overflow, the change is undone and the "page is full" popup shows.
+  const measureRef = useRef(null);
+  const lastGood = useRef(p);
+  useLayoutEffect(() => {
+    const root = measureRef.current;
+    if (!root) return;
+    let over = null;
+    root.querySelectorAll("[data-fit]").forEach((box) => {
+      const inner = box.querySelector("[data-fit-inner]");
+      if (inner && inner.offsetHeight > box.clientHeight + 1) over = over || box.getAttribute("data-fit");
+    });
+    if (over && lastGood.current !== p) {
+      const back = lastGood.current;
+      setP(back);
+      window.dispatchEvent(new CustomEvent("proposal-limit", { detail: { full: true, label: over } }));
+    } else if (!over) lastGood.current = p;
+  }, [p]);
 
   function pickConsultant(which, name) {
     setP((cur) => {
@@ -410,14 +429,12 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         </Section>
 
         <Section title={`${review ? 5 : 6}. Key Responsibilities`} open={open === "key"} onToggle={() => toggle("key")} done={(p.keyPoints || []).some((x) => String(x).trim())}>
-          <Text label="Intro" path="keyIntro" max={L.keyIntro} multiline rows={3} page="key" {...f} />
-          {p.keyIntro !== PACK_TEXT.keyIntro ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("keyIntro", PACK_TEXT.keyIntro)}>Reset to standard wording</button> : null}
+          <Text label="Intro paragraph" path="keyText" max={L.keyText} multiline rows={4} page="key" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
           <ListBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" {...f} />
         </Section>
 
         <Section title={`${review ? 6 : 7}. What We’re Looking For`} open={open === "looking"} onToggle={() => toggle("looking")} done={(p.lookingPoints || []).some((x) => String(x).trim())}>
-          <Text label="Intro" path="lookingIntro" max={L.lookingIntro} multiline rows={3} page="looking" {...f} />
-          {p.lookingIntro !== PACK_TEXT.lookingIntro ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("lookingIntro", PACK_TEXT.lookingIntro)}>Reset to standard wording</button> : null}
+          <Text label="Intro paragraph" path="lookingText" max={L.lookingText} multiline rows={4} page="looking" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
           <ListBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" {...f} />
         </Section>
 
@@ -570,6 +587,9 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           ))}
         </div>
         <ScaledPage>{current.el}</ScaledPage>
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}>
+          <div ref={measureRef} style={{ width: 1920 }}>{pages.map((pg) => <div key={pg.key}>{pg.el}</div>)}</div>
+        </div>
         <div className="preview-note">Page {pages.indexOf(current) + 1} of {pages.length} · 1920 × 1080</div>
       </div>
     </div>

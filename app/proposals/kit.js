@@ -201,11 +201,20 @@ export function LimitModal() {
   return (
     <div className="modal-back" role="dialog" aria-modal="true" onClick={() => setMsg(null)}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
+        {msg.full ? (
+          <>
+            <h3 style={{ marginTop: 0 }}>This page is full</h3>
+            <p>There’s no more room on the <strong>{msg.label}</strong> page, so that last change wasn’t added.</p>
+            <p className="hint">Shorten something on that page to make room.</p>
+            <div className="actions"><button className="btn btn-primary" type="button" onClick={() => setMsg(null)} autoFocus>OK</button></div>
+          </>
+        ) : <>
         <h3 style={{ marginTop: 0 }}>Character limit reached</h3>
         <p><strong>{msg.label}</strong> can be up to {msg.max.toLocaleString("en-GB")} characters so it fits on the page.
           {msg.tried > msg.max + 1 ? ` The text was ${msg.tried.toLocaleString("en-GB")} characters, so everything after the limit has been cut off.` : " Anything more won't fit."}</p>
         <p className="hint">Shorten the wording to make room for anything else you want to say.</p>
         <div className="actions"><button className="btn btn-primary" type="button" onClick={() => setMsg(null)} autoFocus>OK</button></div>
+        </>}
       </div>
     </div>
   );
