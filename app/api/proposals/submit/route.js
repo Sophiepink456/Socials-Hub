@@ -4,7 +4,7 @@ import { markDraftSubmitted } from "../../../../lib/server/drafts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req) {
   if (!hasStore()) return Response.json({ error: "Storage isn't switched on yet." }, { status: 503 });

@@ -4,7 +4,7 @@ import { checkPasscode } from "../../../../lib/server/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const deny = () => Response.json({ error: "Wrong passcode." }, { status: 401 });
 

@@ -3,7 +3,7 @@ import { draftAbout } from "../../../../lib/server/about";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 180;
 
 export async function POST(req) {
   let body;

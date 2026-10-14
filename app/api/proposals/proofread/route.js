@@ -3,7 +3,7 @@ import { hasClaude } from "../../../../lib/server/claude";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 180;
 
 export async function POST(req) {
   if (!hasClaude()) return Response.json({ error: "The spelling check isn't set up yet." }, { status: 503 });

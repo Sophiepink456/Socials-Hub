@@ -3,7 +3,7 @@ import { loadRecord, publicView, editorAction, checkerAction } from "../../../..
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function roleFor(rec, k, c) {
   if (k && k === rec.editKey) return "editor";
