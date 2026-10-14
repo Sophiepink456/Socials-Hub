@@ -52,6 +52,14 @@ export default function Settings() {
     } catch (e) { setMsg(e.message || "Couldn't save."); } finally { setBusy(""); }
   }
 
+  async function remove(type, r) {
+    if (!confirm(`Remove “${r.client || "Client"} – ${r.role || "Role"}” from the list? Its links will stop working.`)) return;
+    const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ remove: { type, id: r.id } }) });
+    const j = await res.json();
+    if (!res.ok) { alert(j.error || "Couldn't remove it."); return; }
+    setData((d) => ({ ...d, [type === "draft" ? "drafts" : "proposals"]: d[type === "draft" ? "drafts" : "proposals"].filter((x) => x.id !== r.id) }));
+  }
+
   async function testClaude() {
     setBusy("Testing…"); setMsg("");
     try {
@@ -92,7 +100,7 @@ export default function Settings() {
         <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals</h3>
         {data.proposals.length ? (
           <table className="table">
-            <thead><tr><th>Client – role</th><th>Consultant</th><th>Status</th><th>Updated</th></tr></thead>
+            <thead><tr><th>Client – role</th><th>Consultant</th><th>Status</th><th>Updated</th><th></th></tr></thead>
             <tbody>
               {data.proposals.map((r) => (
                 <tr key={r.id}>
@@ -100,6 +108,7 @@ export default function Settings() {
                   <td>{r.consultant}</td>
                   <td>{r.status}</td>
                   <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
+                  <td><button type="button" className="link" onClick={() => remove("proposal", r)}>Remove</button></td>
                 </tr>
               ))}
             </tbody>
@@ -109,13 +118,14 @@ export default function Settings() {
           <>
             <h3 className="group-title">Drafts not sent yet</h3>
             <table className="table">
-              <thead><tr><th>Client – role</th><th>Saved by</th><th>Last saved</th></tr></thead>
+              <thead><tr><th>Client – role</th><th>Saved by</th><th>Last saved</th><th></th></tr></thead>
               <tbody>
                 {data.drafts.map((r) => (
                   <tr key={r.id}>
                     <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
                     <td>{r.consultant}</td>
                     <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
+                    <td><button type="button" className="link" onClick={() => remove("draft", r)}>Remove</button></td>
                   </tr>
                 ))}
               </tbody>

@@ -1,8 +1,8 @@
 import { getSettings, saveSettings, checkPasscode } from "../../../lib/server/settings";
-import { listRecords, STATUS } from "../../../lib/server/proposals";
+import { listRecords, STATUS, removeRecord } from "../../../lib/server/proposals";
 import { hasStore } from "../../../lib/server/store";
 import { hasClaude } from "../../../lib/server/claude";
-import { listDrafts } from "../../../lib/server/drafts";
+import { listDrafts, removeDraft } from "../../../lib/server/drafts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +44,10 @@ export async function POST(req) {
   if (!checkPasscode(req)) return deny();
   try {
     const body = await req.json();
+    if (body.remove) {
+      const ok = body.remove.type === "draft" ? await removeDraft(body.remove.id) : await removeRecord(body.remove.id);
+      return ok ? Response.json({ ok: true }) : Response.json({ error: "Couldn't find that one." }, { status: 404 });
+    }
     return Response.json({ settings: await saveSettings(body.settings || {}) });
   } catch (e) {
     console.error(e);

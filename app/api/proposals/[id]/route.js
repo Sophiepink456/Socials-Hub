@@ -13,7 +13,8 @@ function roleFor(rec, k, c) {
 
 export async function GET(req, { params }) {
   const u = new URL(req.url);
-  const rec = await loadRecord(params.id).catch(() => null);
+  const found = await loadRecord(params.id).catch(() => null);
+  const rec = found && !found.removed ? found : null;
   if (!rec) return Response.json({ error: "Not found" }, { status: 404 });
   const role = roleFor(rec, u.searchParams.get("k"), u.searchParams.get("c"));
   if (!role) return Response.json({ error: "This link isn't valid." }, { status: 403 });
@@ -23,7 +24,8 @@ export async function GET(req, { params }) {
 export async function POST(req, { params }) {
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "Bad request" }, { status: 400 }); }
-  const rec = await loadRecord(params.id).catch(() => null);
+  const found = await loadRecord(params.id).catch(() => null);
+  const rec = found && !found.removed ? found : null;
   if (!rec) return Response.json({ error: "Not found" }, { status: 404 });
   const role = roleFor(rec, body.k, body.c);
   const origin = new URL(req.url).origin;
