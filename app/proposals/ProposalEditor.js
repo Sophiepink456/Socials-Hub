@@ -533,7 +533,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         ) : null}
 
         {review ? (
-          <Section title="Candidate Packs pictures (back office only)" open={open === "candidate"} onToggle={() => toggle("candidate")} done>
+          <Section title="Back-office pictures" open={open === "candidate"} onToggle={() => toggle("candidate")} done>
             <CandidatePictures p={p} set={set} setPage={setPage} />
           </Section>
         ) : null}
@@ -891,54 +891,79 @@ function PhotoFramer({ src, slot, pos, onChange }) {
   );
 }
 
-// Back office only: swap the three screens on this proposal's Candidate Packs page.
-const PACK_SLOTS = [
-  { key: "back", label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
-  { key: "front", label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
-  { key: "ipad", label: "iPad screen", hint: "Portrait, about 3:4, e.g. 1470 × 1968. Shown from the top down.", ratio: "490 / 656" },
+// Back office only: swap pictures that consultants can't change.
+const BO_GROUPS = [
+  { title: "Candidate Packs page", page: "candidate", slots: [
+    { field: "candidatePack", key: "back", label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
+    { field: "candidatePack", key: "front", label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
+    { field: "candidatePack", key: "ipad", label: "iPad screen", hint: "Portrait about 3:4, e.g. 1470 × 1968. Shown from the top.", ratio: "490 / 656", top: true },
+  ] },
+  { title: "Search Process page", page: "search", slots: [
+    { field: "boPhotos", key: "search", label: "Banner", hint: "Wide, at least 1920 × 340. The title is added on top.", ratio: "1920 / 340" },
+  ] },
+  { title: "Next Steps page", page: "next", slots: [
+    { field: "boPhotos", key: "next", label: "Bottom-left photo", hint: "Landscape, at least 993 × 520.", ratio: "993 / 520" },
+  ] },
+  { title: "Appendices page", page: "appendices", slots: [
+    { field: "boPhotos", key: "appendix", label: "Right circle photo", hint: "Portrait-ish, at least 912 × 980.", ratio: "912 / 980", circle: "right" },
+  ] },
+  { title: "End page", page: "end", slots: [
+    { field: "boPhotos", key: "end", label: "Left circle photo", hint: "At least 1024 × 864.", ratio: "1024 / 864", circle: "left" },
+  ] },
 ];
 
 function CandidatePictures({ p, set, setPage }) {
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
-  const pack = p.candidatePack || {};
-  async function upload(key, file) {
+  async function upload(slot, page, file) {
     if (!file) return;
-    setBusy(key); setMsg("");
+    const id = slot.field + slot.key;
+    setBusy(id); setMsg("");
     try {
       const dataUrl = await readImage(file, 2400);
       const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      set("candidatePack", { ...pack, [key]: j.url });
-      setPage("candidate");
+      set(slot.field, { ...(p[slot.field] || {}), [slot.key]: j.url });
+      setPage(page);
       setMsg("Picture added. Press Save changes to keep it.");
     } catch (e) { setMsg(e.message || "Couldn't upload that picture."); } finally { setBusy(""); }
   }
   return (
     <>
-      <p className="hint" style={{ marginTop: 0 }}>Swap the three screens on this proposal’s Candidate Packs page. Consultants don’t see this section.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
-        {PACK_SLOTS.map((s) => (
-          <div key={s.key}>
-            <div className="label"><span>{s.label}</span></div>
-            <div style={{ aspectRatio: s.ratio, maxHeight: 200, background: "#eee", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {pack[s.key]
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={pack[s.key]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.key === "ipad" ? "center top" : "center" }} />
-                : <span className="hint">Standard picture</span>}
-            </div>
-            <div className="hint">{s.hint}</div>
-            <div className="actions" style={{ marginTop: 6 }}>
-              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
-                {busy === s.key ? "Uploading…" : "Upload picture"}
-                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(e) => { upload(s.key, e.target.files && e.target.files[0]); e.target.value = ""; }} />
-              </label>
-              {pack[s.key] ? <button type="button" className="link" onClick={() => { set("candidatePack", { ...pack, [s.key]: "" }); setPage("candidate"); }}>Back to standard</button> : null}
-            </div>
+      <p className="hint" style={{ marginTop: 0 }}>Swap pictures that consultants can’t change. Anything left alone keeps the standard picture. Consultants don’t see this section.</p>
+      {BO_GROUPS.filter((g) => g.page !== "appendices" || p.appendicesOn).map((g) => (
+        <div key={g.title} style={{ marginBottom: 18 }}>
+          <h4 className="group-title" style={{ fontSize: 15, marginTop: 6 }}>
+            {g.title} <button type="button" className="link" style={{ fontWeight: 400, marginLeft: 6 }} onClick={() => setPage(g.page)}>Show page</button>
+          </h4>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+            {g.slots.map((s) => {
+              const cur = (p[s.field] || {})[s.key];
+              const id = s.field + s.key;
+              return (
+                <div key={id}>
+                  <div className="label"><span>{s.label}</span></div>
+                  <div style={{ aspectRatio: s.ratio, maxHeight: 200, background: "#eee", borderRadius: s.circle ? "50%" : 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {cur
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={cur} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.top ? "center top" : "center" }} />
+                      : <span className="hint">Standard picture</span>}
+                  </div>
+                  <div className="hint">{s.hint}</div>
+                  <div className="actions" style={{ marginTop: 6 }}>
+                    <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
+                      {busy === id ? "Uploading…" : "Upload picture"}
+                      <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(e) => { upload(s, g.page, e.target.files && e.target.files[0]); e.target.value = ""; }} />
+                    </label>
+                    {cur ? <button type="button" className="link" onClick={() => { set(s.field, { ...(p[s.field] || {}), [s.key]: "" }); setPage(g.page); }}>Back to standard</button> : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
       {msg ? <div className="hint" style={{ marginTop: 8 }}>{msg}</div> : null}
     </>
   );
