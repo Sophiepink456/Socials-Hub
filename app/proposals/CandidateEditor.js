@@ -9,6 +9,7 @@ import {
   blankPack, normalisePack, emailFor, packTextFields, packFieldName, packPhotoFits, assignPackPhotos,
 } from "../../lib/candidate/data";
 import { STOCK_PHOTOS } from "../../lib/proposal/data";
+import { PACK_STYLES, packStyle, packStyleDefaults, CORE_PACK_PAGES } from "../../lib/candidate/extra";
 import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal } from "./kit";
 
 const DRAFT_KEY = "pack-draft-v1";
@@ -465,23 +466,8 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           </Section>
         ) : null}
         {review ? (
-          <Section title={`Remove pages${(p.hiddenPages || []).length ? ` (${p.hiddenPages.length} removed)` : ""} (back office only)`} open={open === "pages"} onToggle={() => toggle("pages")} done>
-            <p className="hint" style={{ marginTop: 0 }}>Untick a page to leave it out of this pack. Tick it again to put it back.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px" }}>
-              {PACK_WORDING.map((w) => {
-                const off = (p.hiddenPages || []).includes(w.page);
-                return (
-                  <label key={w.page} className="check" style={{ opacity: off ? 0.55 : 1 }}>
-                    <input type="checkbox" checked={!off} disabled={w.page === "title"} onChange={(e) => {
-                      const keep = e.target.checked;
-                      setP((cur) => { const h = new Set(cur.hiddenPages || []); if (keep) h.delete(w.page); else h.add(w.page); return { ...cur, hiddenPages: [...h] }; });
-                      if (keep) setPage(w.page);
-                    }} />
-                    {w.label}{off ? " (removed)" : ""}
-                  </label>
-                );
-              })}
-            </div>
+          <Section title={`Add or remove pages${(p.extraPages || []).length || (p.hiddenPages || []).length ? ` (${(p.extraPages || []).length} added, ${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "pages"} onToggle={() => toggle("pages")} done>
+            <PackPagesEditor p={p} setP={setP} setPage={setPage} pages={pages} />
           </Section>
         ) : null}
 
@@ -633,6 +619,158 @@ function PackWording({ p, setP, setPage }) {
           </div>
         );
       })}
+    </>
+  );
+}
+
+// Back office: take standard pages out, and add pages built from the pack's own page designs.
+function PackPagesEditor({ p, setP, setPage, pages }) {
+  const [howMany, setHowMany] = useState(1);
+  const [openId, setOpenId] = useState("");
+  const [busy, setBusy] = useState("");
+  const list = p.extraPages || [];
+  const hidden = new Set(p.hiddenPages || []);
+  const update = (id, fn) => setP((cur) => ({ ...cur, extraPages: (cur.extraPages || []).map((e) => (e.id === id ? fn(e) : e)) }));
+
+  function add() {
+    const fresh = Array.from({ length: howMany }, () => ({ id: Math.random().toString(36).slice(2, 10), style: "", after: "beforeEnd", name: "", v: {}, photoPos: {} }));
+    setP((cur) => ({ ...cur, extraPages: [...(cur.extraPages || []), ...fresh] }));
+    setOpenId(fresh[0].id);
+  }
+  function remove(id) {
+    if (!confirm("Remove this added page?")) return;
+    setP((cur) => {
+      const gone = (cur.extraPages || []).find((e) => e.id === id);
+      return { ...cur, extraPages: (cur.extraPages || []).filter((e) => e.id !== id).map((e) => (e.after === id ? { ...e, after: gone ? gone.after : "beforeEnd" } : e)) };
+    });
+  }
+  function chooseStyle(e, style) {
+    if (e.style && Object.keys(e.v || {}).length && !confirm("Changing the design starts this page again with that page’s wording. Carry on?")) return;
+    update(e.id, (x) => ({ ...x, style, v: style ? packStyleDefaults(style, p) : {}, photoPos: {} }));
+    if (style) setPage(`x-${e.id}`);
+  }
+  async function upload(e, f, file) {
+    if (!file) return;
+    setBusy(e.id + f.k);
+    try {
+      const dataUrl = await readImage(file, 2400);
+      const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: j.url }, photoPos: { ...(x.photoPos || {}), [f.k]: undefined } }));
+      setPage(`x-${e.id}`);
+    } catch (err) { alert(err.message || "Couldn't upload that picture."); } finally { setBusy(""); }
+  }
+  return (
+    <>
+      <h4 className="group-title" style={{ fontSize: 15, marginTop: 0 }}>Standard pages</h4>
+      <p className="hint" style={{ marginTop: 0 }}>Untick a page to leave it out of this pack. Tick it again to put it back.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px", marginBottom: 18 }}>
+        {CORE_PACK_PAGES.map(([k, label]) => (
+          <label key={k} className="check" style={{ opacity: hidden.has(k) ? 0.55 : 1 }}>
+            <input type="checkbox" checked={!hidden.has(k)} disabled={k === "title"} onChange={(ev) => {
+              const keep = ev.target.checked;
+              setP((cur) => { const h = new Set(cur.hiddenPages || []); if (keep) h.delete(k); else h.add(k); return { ...cur, hiddenPages: [...h] }; });
+              if (keep) setPage(k);
+            }} />
+            {label}{hidden.has(k) ? " (removed)" : ""}
+          </label>
+        ))}
+      </div>
+      <h4 className="group-title" style={{ fontSize: 15 }}>Added pages</h4>
+      <p className="hint" style={{ marginTop: 0 }}>Add pages using any of the candidate pack’s page designs. Each new page starts as a copy of that page in this pack; change any words and pictures, and choose where it goes.</p>
+      <div className="row" style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <label className="label" htmlFor="pack-howmany"><span>How many pages to add?</span></label>
+          <select id="pack-howmany" className="input" style={{ width: 120 }} value={howMany} onChange={(ev) => setHowMany(Number(ev.target.value))}>
+            {Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+          </select>
+        </div>
+        <button type="button" className="btn btn-primary btn-small" onClick={add}>Add {howMany === 1 ? "page" : `${howMany} pages`}</button>
+      </div>
+      {list.map((e, n) => {
+        const st = packStyle(e.style);
+        const isOpen = openId === e.id;
+        const key = `x-${e.id}`;
+        const pageNo = pages.findIndex((pg) => pg.key === key) + 1;
+        const where = pages.filter((pg) => pg.key !== key && pg.key !== "end");
+        return (
+          <div key={e.id} className="panel" style={{ padding: 16, marginTop: 14 }}>
+            <div className="row" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 0 }}>
+              <button type="button" className="link" style={{ fontWeight: 700, textAlign: "left" }} onClick={() => { setOpenId(isOpen ? "" : e.id); if (st) setPage(key); }}>
+                {isOpen ? "–" : "+"} Added page {n + 1}{st ? `: ${e.name || st.label}` : " (choose a design)"}{pageNo > 0 ? ` · page ${pageNo} of ${pages.length}` : ""}
+              </button>
+              <button type="button" className="link muted" onClick={() => remove(e.id)}>Remove</button>
+            </div>
+            {isOpen ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="row">
+                  <label className="label"><span>Page design</span></label>
+                  <select className="input" value={e.style} onChange={(ev) => chooseStyle(e, ev.target.value)}>
+                    <option value="">Choose a page design…</option>
+                    {PACK_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </div>
+                {st ? (
+                  <>
+                    <div className="row">
+                      <label className="label"><span>Where it goes</span></label>
+                      <select className="input" value={e.after || "beforeEnd"} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, after: val })); setPage(key); }}>
+                        <option value="beforeEnd">Before the end page</option>
+                        {where.map((pg) => <option key={pg.key} value={pg.key.startsWith("x-") ? pg.key.slice(2) : pg.key}>After page {pages.indexOf(pg) + 1}: {pg.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="row">
+                      <label className="label"><span>Name on the page tab</span></label>
+                      <input className="input" value={e.name || ""} placeholder={st.label} maxLength={40} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, name: val })); }} />
+                    </div>
+                    <h4 className="group-title" style={{ fontSize: 15 }}>Words and pictures on this page</h4>
+                    {st.fields.map((f) => {
+                      const val = e.v && e.v[f.k] !== undefined ? e.v[f.k] : f.def(p);
+                      const setVal = (nv) => {
+                        if (f.max && typeof nv === "string" && nv.length > f.max) { limitHit(f.label, f.max, nv.length); nv = nv.slice(0, f.max); }
+                        update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
+                      };
+                      if (f.kind === "image") {
+                        return (
+                          <div key={f.k} className="row">
+                            <label className="label"><span>{f.label}</span></label>
+                            {val ? <PhotoFramer src={val} slot={{ w: f.w, h: f.h }} pos={(e.photoPos || {})[f.k]}
+                              onChange={(pos) => { update(e.id, (x) => ({ ...x, photoPos: { ...(x.photoPos || {}), [f.k]: pos } })); setPage(key); }} /> : <div className="hint">No picture.</div>}
+                            <div className="actions" style={{ marginTop: 6 }}>
+                              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
+                                {busy === e.id + f.k ? "Uploading…" : "Upload picture"}
+                                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(ev) => { upload(e, f, ev.target.files && ev.target.files[0]); ev.target.value = ""; }} />
+                              </label>
+                              {[...(p.sitePhotos || []).map((ph) => ph.url), ...STOCK_PHOTOS].length && f.k !== "siteShot" ? (
+                                <select className="input" style={{ width: "auto" }} value="" onChange={(ev) => { if (ev.target.value) { setVal(ev.target.value); setPage(key); } }}>
+                                  <option value="">…or use another photo</option>
+                                  {(p.sitePhotos || []).map((ph, i) => <option key={ph.url} value={ph.url}>Website photo {i + 1}</option>)}
+                                  {STOCK_PHOTOS.map((src, i) => <option key={src} value={src}>Our photo {i + 1}</option>)}
+                                </select>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={f.k} className="row">
+                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span>{f.max ? <Count value={val} max={f.max} /> : null}</label>
+                          {f.kind === "text"
+                            ? <input id={`${e.id}-${f.k}`} className="input" value={val} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => setVal(ev.target.value)} />
+                            : <textarea id={`${e.id}-${f.k}`} className="input" rows={f.kind === "lines" ? 6 : 4} value={val} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => setVal(ev.target.value)} />}
+                        </div>
+                      );
+                    })}
+                    {e.style === "contact" ? <div className="hint">The consultants and their details come from section 2.</div> : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the pack and its PDF.</p> : null}
     </>
   );
 }
