@@ -534,7 +534,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
         {review ? (
           <Section title="Back-office pictures" open={open === "candidate"} onToggle={() => toggle("candidate")} done>
-            <CandidatePictures p={p} set={set} setPage={setPage} />
+            <CandidatePictures p={p} set={set} setP={setP} setPage={setPage} />
           </Section>
         ) : null}
 
@@ -850,7 +850,17 @@ function PhotoFramer({ src, slot, pos, onChange }) {
   const [nat, setNat] = useState(null);
   const x = pos && pos.x != null ? pos.x : 50;
   const y = pos && pos.y != null ? pos.y : 50;
-  const W = 320, H = Math.round((W * slot.h) / slot.w);
+  // Fit the preview to the space it's in: up to 320 wide and 260 tall, keeping the shape.
+  const wrap = useRef(null);
+  const [avail, setAvail] = useState(320);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setAvail(el.clientWidth || 320));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const W = Math.max(80, Math.round(Math.min(avail, 320, (260 * slot.w) / slot.h))), H = Math.round((W * slot.h) / slot.w);
   // How far the photo spills past the frame on each side (in frame pixels).
   let ox = 0, oy = 0;
   if (nat) {
@@ -875,9 +885,9 @@ function PhotoFramer({ src, slot, pos, onChange }) {
   }
   const up = () => { drag.current = null; };
   return (
-    <div style={{ marginTop: 8 }}>
+    <div ref={wrap} style={{ marginTop: 8 }}>
       <div ref={box} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-        style={{ width: W, height: H, maxWidth: "100%", overflow: "hidden", borderRadius: 8, border: "1px solid #ddd", background: "#eee",
+        style={{ width: W, height: H, overflow: "hidden", borderRadius: 8, border: "1px solid #ddd", background: "#eee",
           cursor: canX || canY ? (drag.current ? "grabbing" : "grab") : "default", touchAction: "none", userSelect: "none" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" draggable={false} onLoad={(e) => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
@@ -894,25 +904,25 @@ function PhotoFramer({ src, slot, pos, onChange }) {
 // Back office only: swap pictures that consultants can't change.
 const BO_GROUPS = [
   { title: "Candidate Packs page", page: "candidate", slots: [
-    { field: "candidatePack", key: "back", label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
-    { field: "candidatePack", key: "front", label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
-    { field: "candidatePack", key: "ipad", label: "iPad screen", hint: "Portrait about 3:4, e.g. 1470 × 1968. Shown from the top.", ratio: "490 / 656", top: true },
+    { field: "candidatePack", pk: "cp.back", key: "back", w: 594, h: 334, label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
+    { field: "candidatePack", pk: "cp.front", key: "front", w: 594, h: 334, label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. 1920 × 1080.", ratio: "16 / 9" },
+    { field: "candidatePack", pk: "cp.ipad", key: "ipad", w: 490, h: 656, label: "iPad screen", hint: "Portrait about 3:4, e.g. 1470 × 1968. Shown from the top.", ratio: "490 / 656", top: true },
   ] },
   { title: "Search Process page", page: "search", slots: [
-    { field: "boPhotos", key: "search", label: "Banner", hint: "Wide, at least 1920 × 340. The title is added on top.", ratio: "1920 / 340" },
+    { field: "boPhotos", pk: "bo.search", key: "search", w: 1920, h: 340, label: "Banner", hint: "Wide, at least 1920 × 340. The title is added on top.", ratio: "1920 / 340" },
   ] },
   { title: "Next Steps page", page: "next", slots: [
-    { field: "boPhotos", key: "next", label: "Bottom-left photo", hint: "Landscape, at least 993 × 520.", ratio: "993 / 520" },
+    { field: "boPhotos", pk: "bo.next", key: "next", w: 993, h: 520, label: "Bottom-left photo", hint: "Landscape, at least 993 × 520.", ratio: "993 / 520" },
   ] },
   { title: "Appendices page", page: "appendices", slots: [
-    { field: "boPhotos", key: "appendix", label: "Right circle photo", hint: "Portrait-ish, at least 912 × 980.", ratio: "912 / 980", circle: "right" },
+    { field: "boPhotos", pk: "bo.appendix", key: "appendix", w: 912, h: 980, label: "Right circle photo", hint: "Portrait-ish, at least 912 × 980.", ratio: "912 / 980", circle: "right" },
   ] },
   { title: "End page", page: "end", slots: [
-    { field: "boPhotos", key: "end", label: "Left circle photo", hint: "At least 1024 × 864.", ratio: "1024 / 864", circle: "left" },
+    { field: "boPhotos", pk: "bo.end", key: "end", w: 1024, h: 864, label: "Left circle photo", hint: "At least 1024 × 864.", ratio: "1024 / 864", circle: "left" },
   ] },
 ];
 
-function CandidatePictures({ p, set, setPage }) {
+function CandidatePictures({ p, set, setP, setPage }) {
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   async function upload(slot, page, file) {
@@ -924,7 +934,7 @@ function CandidatePictures({ p, set, setPage }) {
       const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      set(slot.field, { ...(p[slot.field] || {}), [slot.key]: j.url });
+      setP((cur) => ({ ...cur, [slot.field]: { ...(cur[slot.field] || {}), [slot.key]: j.url }, photoPos: { ...(cur.photoPos || {}), [slot.pk]: undefined } }));
       setPage(page);
       setMsg("Picture added. Press Save changes to keep it.");
     } catch (e) { setMsg(e.message || "Couldn't upload that picture."); } finally { setBusy(""); }
@@ -944,19 +954,22 @@ function CandidatePictures({ p, set, setPage }) {
               return (
                 <div key={id}>
                   <div className="label"><span>{s.label}</span></div>
-                  <div style={{ aspectRatio: s.ratio, maxHeight: 200, background: "#eee", borderRadius: s.circle ? "50%" : 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {cur
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={cur} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.top ? "center top" : "center" }} />
-                      : <span className="hint">Standard picture</span>}
-                  </div>
+                  {!cur ? (
+                    <div style={{ aspectRatio: s.ratio, maxHeight: 200, background: "#eee", borderRadius: s.circle ? "50%" : 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span className="hint">Standard picture</span>
+                    </div>
+                  ) : null}
+                  {cur ? (
+                    <PhotoFramer src={cur} slot={{ w: s.w, h: s.h }} pos={(p.photoPos || {})[s.pk] || (s.top ? { x: 50, y: 0 } : undefined)}
+                      onChange={(pos) => { setP((c) => ({ ...c, photoPos: { ...(c.photoPos || {}), [s.pk]: pos } })); setPage(g.page); }} />
+                  ) : null}
                   <div className="hint">{s.hint}</div>
                   <div className="actions" style={{ marginTop: 6 }}>
                     <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
                       {busy === id ? "Uploading…" : "Upload picture"}
                       <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(e) => { upload(s, g.page, e.target.files && e.target.files[0]); e.target.value = ""; }} />
                     </label>
-                    {cur ? <button type="button" className="link" onClick={() => { set(s.field, { ...(p[s.field] || {}), [s.key]: "" }); setPage(g.page); }}>Back to standard</button> : null}
+                    {cur ? <button type="button" className="link" onClick={() => { setP((c) => ({ ...c, [s.field]: { ...(c[s.field] || {}), [s.key]: "" }, photoPos: { ...(c.photoPos || {}), [s.pk]: undefined } })); setPage(g.page); }}>Back to standard</button> : null}
                   </div>
                 </div>
               );
