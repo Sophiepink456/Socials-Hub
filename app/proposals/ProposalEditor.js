@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { proposalPages } from "../../lib/proposal/pages";
+import { EXTRA_STYLES, styleById, defaultsFor } from "../../lib/proposal/extra";
 import {
   APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
   assignPhotos, photoFits, textFields, fieldName,
@@ -649,6 +650,12 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           ))}
         </Section>
 
+        {review ? (
+          <Section title={`Extra pages${(p.extraPages || []).length ? ` (${(p.extraPages || []).length})` : ""} (back office only)`} open={open === "extra"} onToggle={() => toggle("extra")} done>
+            <ExtraPages p={p} setP={setP} setPage={setPage} pages={pages} />
+          </Section>
+        ) : null}
+
         {issues ? (
           <div className="issues">
             <div className="issues-head">{issues.length ? `${issues.length} thing${issues.length === 1 ? "" : "s"} to check` : "No spelling or grammar mistakes found."}</div>
@@ -978,6 +985,154 @@ function CandidatePictures({ p, set, setP, setPage }) {
         </div>
       ))}
       {msg ? <div className="hint" style={{ marginTop: 8 }}>{msg}</div> : null}
+    </>
+  );
+}
+
+// ---- Back office: add extra pages ------------------------------------------------
+// Pick how many, choose a page style for each, edit every word and picture on it, and choose
+// where it goes. Page numbers and the Contents page update themselves.
+function ExtraPages({ p, setP, setPage, pages }) {
+  const [howMany, setHowMany] = useState(1);
+  const [openId, setOpenId] = useState("");
+  const [busy, setBusy] = useState("");
+  const list = p.extraPages || [];
+  const update = (id, fn) => setP((cur) => ({ ...cur, extraPages: (cur.extraPages || []).map((e) => (e.id === id ? fn(e) : e)) }));
+
+  function add() {
+    const fresh = Array.from({ length: howMany }, () => ({ id: Math.random().toString(36).slice(2, 10), style: "", after: "lastSection", name: "", desc: "", v: {}, photoPos: {} }));
+    setP((cur) => ({ ...cur, extraPages: [...(cur.extraPages || []), ...fresh] }));
+    setOpenId(fresh[0].id);
+  }
+  function remove(id) {
+    if (!confirm("Remove this added page?")) return;
+    // Anything placed after it moves to where it was.
+    setP((cur) => {
+      const gone = (cur.extraPages || []).find((e) => e.id === id);
+      return { ...cur, extraPages: (cur.extraPages || []).filter((e) => e.id !== id).map((e) => (e.after === `x-${id}` ? { ...e, after: gone ? gone.after : "lastSection" } : e)) };
+    });
+  }
+  function chooseStyle(e, styleId) {
+    const st = styleById(styleId);
+    update(e.id, (x) => ({ ...x, style: styleId, v: defaultsFor(styleId, p), photoPos: {}, name: x.name || (st ? st.label.replace(/ style.*$/, "") : "") }));
+    setPage(`x-${e.id}`);
+  }
+  async function upload(e, f, file) {
+    if (!file) return;
+    setBusy(e.id + f.k);
+    try {
+      const dataUrl = await readImage(file, 2400);
+      const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: j.url }, photoPos: { ...(x.photoPos || {}), [f.posKey]: undefined } }));
+      setPage(`x-${e.id}`);
+    } catch (err) { alert(err.message || "Couldn't upload that picture."); } finally { setBusy(""); }
+  }
+
+  return (
+    <>
+      <p className="hint" style={{ marginTop: 0 }}>Add pages using any of the proposal’s page designs. Every word and picture on them can be changed, and you choose where each one goes. Page numbers and the Contents page update automatically. Consultants don’t see this section.</p>
+      <div className="row" style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <label className="label" htmlFor="howmany"><span>How many pages to add?</span></label>
+          <select id="howmany" className="input" style={{ width: 120 }} value={howMany} onChange={(e) => setHowMany(Number(e.target.value))}>
+            {Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+          </select>
+        </div>
+        <button type="button" className="btn btn-primary btn-small" onClick={add}>Add {howMany === 1 ? "page" : `${howMany} pages`}</button>
+      </div>
+
+      {list.map((e, n) => {
+        const st = styleById(e.style);
+        const isOpen = openId === e.id;
+        const where = pages.filter((pg) => pg.key !== `x-${e.id}` && pg.key !== "end");
+        const label = (pages.find((pg) => pg.key === `x-${e.id}`) || {}).label;
+        const pageNo = pages.findIndex((pg) => pg.key === `x-${e.id}`) + 1;
+        return (
+          <div key={e.id} className="panel" style={{ padding: 16, marginTop: 14 }}>
+            <div className="row" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <button type="button" className="link" style={{ fontWeight: 700, textAlign: "left" }} onClick={() => { setOpenId(isOpen ? "" : e.id); if (st) setPage(`x-${e.id}`); }}>
+                {isOpen ? "–" : "+"} Added page {n + 1}{st ? `: ${e.name || label || st.label}` : " (choose a style)"}{pageNo > 0 ? ` · page ${pageNo} of ${pages.length}` : ""}
+              </button>
+              <button type="button" className="link muted" onClick={() => remove(e.id)}>Remove</button>
+            </div>
+            {isOpen ? (
+              <div style={{ marginTop: 12 }}>
+                <div className="row">
+                  <label className="label"><span>Page style</span></label>
+                  <select className="input" value={e.style} onChange={(ev) => chooseStyle(e, ev.target.value)}>
+                    <option value="">Choose a page style…</option>
+                    {EXTRA_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                  {e.style ? <div className="hint">Changing the style starts this page again with that style’s wording.</div> : null}
+                </div>
+                {st ? (
+                  <>
+                    <div className="row">
+                      <label className="label"><span>Where it goes</span></label>
+                      <select className="input" value={e.after || "lastSection"} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, after: val })); setPage(`x-${e.id}`); }}>
+                        <option value="lastSection">Before the end page</option>
+                        {where.map((pg) => <option key={pg.key} value={pg.key}>After page {pages.indexOf(pg) + 1}: {pg.label}</option>)}
+                      </select>
+                    </div>
+                    {st.numbered === false ? null : (
+                      <>
+                        <div className="row">
+                          <label className="label"><span>Name on the Contents page and footer</span></label>
+                          <input className="input" value={e.name || ""} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, name: val })); }} />
+                        </div>
+                        <div className="row">
+                          <label className="label"><span>Line under it on the Contents page</span></label>
+                          <input className="input" value={e.desc || ""} placeholder="Leave blank to use the style’s standard line" onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, desc: val })); }} />
+                          <div className="hint">Only shows on the Contents page if this page comes after it.</div>
+                        </div>
+                      </>
+                    )}
+                    <h4 className="group-title" style={{ fontSize: 15 }}>Text and pictures on this page</h4>
+                    {st.fields.map((f) => {
+                      const val = e.v && e.v[f.k] !== undefined ? e.v[f.k] : "";
+                      const setVal = (nv) => update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
+                      if (f.kind === "image") {
+                        return (
+                          <div key={f.k} className="row">
+                            <label className="label"><span>{f.label}</span></label>
+                            {val ? (
+                              <PhotoFramer src={val} slot={{ w: f.w, h: f.h }} pos={(e.photoPos || {})[f.posKey]}
+                                onChange={(pos) => { update(e.id, (x) => ({ ...x, photoPos: { ...(x.photoPos || {}), [f.posKey]: pos } })); setPage(`x-${e.id}`); }} />
+                            ) : <div className="hint">No picture.</div>}
+                            <div className="actions" style={{ marginTop: 6 }}>
+                              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
+                                {busy === e.id + f.k ? "Uploading…" : "Upload picture"}
+                                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(ev) => { upload(e, f, ev.target.files && ev.target.files[0]); ev.target.value = ""; }} />
+                              </label>
+                              {(p.sitePhotos || []).length ? (
+                                <select className="input" style={{ width: "auto" }} value="" onChange={(ev) => { if (ev.target.value) { setVal(ev.target.value); setPage(`x-${e.id}`); } }}>
+                                  <option value="">…or use a website photo</option>
+                                  {(p.sitePhotos || []).map((ph, i) => <option key={ph.url} value={ph.url}>Website photo {i + 1}</option>)}
+                                </select>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={f.k} className="row">
+                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span></label>
+                          {f.kind === "text"
+                            ? <input id={`${e.id}-${f.k}`} className="input" value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />
+                            : <textarea id={`${e.id}-${f.k}`} className="input" rows={f.kind === "lines" ? 4 : 5} value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />}
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the proposal and its PDF.</p> : null}
     </>
   );
 }
