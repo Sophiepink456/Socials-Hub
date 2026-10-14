@@ -2,6 +2,7 @@ import { getSettings, saveSettings, checkPasscode } from "../../../lib/server/se
 import { listRecords, STATUS } from "../../../lib/server/proposals";
 import { hasStore } from "../../../lib/server/store";
 import { hasClaude } from "../../../lib/server/claude";
+import { listDrafts } from "../../../lib/server/drafts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,9 +25,17 @@ export async function GET(req) {
       link: `/proposals/review/${r.id}?k=${r.editKey}`,
     }));
   } catch (e) { console.error(e); }
+  let drafts = [];
+  try {
+    drafts = (await listDrafts(60)).map((d) => ({
+      id: d.id, client: d.data.clientName, role: d.data.roleTitle, consultant: d.savedBy && (d.savedBy.name || d.savedBy.email),
+      updatedAt: d.updatedAt, link: `/proposals?draft=${d.id}&k=${d.key}`,
+    }));
+  } catch (e) { console.error(e); }
   return Response.json({
     settings,
     proposals,
+    drafts,
     checks: { storage: hasStore(), claude: hasClaude(), email: !!process.env.ZAPIER_HOOK_URL, ads: !!(settings.adsScriptUrl || process.env.ADS_SCRIPT_URL) },
   }, { headers: { "Cache-Control": "no-store" } });
 }

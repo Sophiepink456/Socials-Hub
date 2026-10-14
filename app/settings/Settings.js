@@ -105,6 +105,23 @@ export default function Settings() {
             </tbody>
           </table>
         ) : <p className="hint">No proposals submitted yet.</p>}
+        {data.drafts && data.drafts.length ? (
+          <>
+            <h3 className="group-title">Drafts not sent yet</h3>
+            <table className="table">
+              <thead><tr><th>Client – role</th><th>Saved by</th><th>Last saved</th></tr></thead>
+              <tbody>
+                {data.drafts.map((r) => (
+                  <tr key={r.id}>
+                    <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                    <td>{r.consultant}</td>
+                    <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : null}
       </div>
       <div className="panel">
         <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposal emails</h3>

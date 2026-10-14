@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { proposalPages } from "../../lib/proposal/pages";
 import {
-  APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise,
+  APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
   assignPhotos, photoFits, textFields, fieldName,
 } from "../../lib/proposal/data";
 
@@ -52,6 +52,11 @@ function readImage(file, maxSide = 2200, type = "image/jpeg") {
 
 // ---- form fields -------------------------------------------------------------
 
+// Tell the editor a box went over its limit (it shows the popup).
+function limitHit(label, max, tried) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("proposal-limit", { detail: { label, max, tried } }));
+}
+
 function Count({ value, max }) {
   if (!max) return null;
   const n = String(value || "").length;
@@ -65,11 +70,16 @@ function Text({ label, path, p, set, max, page, setPage, placeholder, multiline,
     className: "input",
     value: v,
     placeholder,
-    maxLength: max || undefined,
     spellCheck: true,
     lang: "en-GB",
     onFocus: () => page && setPage(page),
-    onChange: (e) => set(path, max ? e.target.value.slice(0, max) : e.target.value),
+    onChange: (e) => {
+      const val = e.target.value;
+      if (max && val.length > max) {
+        set(path, val.slice(0, max));
+        limitHit(label, max, val.length);
+      } else set(path, val);
+    },
   };
   return (
     <div className="row">
@@ -122,6 +132,15 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const [submit, setSubmit] = useState(null); // {name, email} while the send panel is open
   const [done, setDone] = useState("");
   const [savedDraft, setSavedDraft] = useState(null); // an unfinished proposal from last time
+  const [draft, setDraft] = useState(null); // { id, k, link } once saved to the hub
+  const [draftPanel, setDraftPanel] = useState(null); // { name, email } while asking who it belongs to
+  const [draftMsg, setDraftMsg] = useState("");
+  const [limitMsg, setLimitMsg] = useState(null); // {label, max, tried} when a box goes over its limit
+  useEffect(() => {
+    const on = (e) => setLimitMsg((cur) => cur || e.detail);
+    window.addEventListener("proposal-limit", on);
+    return () => window.removeEventListener("proposal-limit", on);
+  }, []);
   const [sendTo, setSendTo] = useState(record ? (record.submittedBy && record.submittedBy.email) || "" : "");
   const loaded = useRef(false);
 
@@ -129,6 +148,19 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   useEffect(() => {
     if (review) return;
     try {
+      // Opened from a "Carry on with the draft" link: load that saved draft.
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("draft") && qs.get("k")) {
+        fetch(`/api/proposals/draft?id=${encodeURIComponent(qs.get("draft"))}&k=${encodeURIComponent(qs.get("k"))}`, { cache: "no-store" })
+          .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+          .then(({ ok, j }) => {
+            if (!ok) { setDraftMsg(j.error || "That draft link isn't valid any more."); return; }
+            setP(normalise(j.data));
+            setDraft({ id: j.id, k: j.k, link: window.location.href, savedBy: j.savedBy });
+            setDraftMsg(j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
+          }).catch(() => setDraftMsg("Couldn't open that draft. Try the link again."));
+        return;
+      }
       // Always open on a clean proposal. An unfinished one is kept aside and offered back,
       // so nothing is lost if the page was closed by mistake.
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
@@ -190,11 +222,34 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
     }
   }
 
+  // ---- save a draft to the hub (with a link to come back to it) ----
+  async function saveDraft(who) {
+    setBusy("Saving draft…"); setDraftMsg("");
+    try {
+      const res = await fetch("/api/proposals/draft", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: draft && draft.id, key: draft && draft.k, proposal: p, name: who && who.name, email: who && who.email }),
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r.error);
+      setDraft({ id: r.id, k: r.k, link: r.link, savedBy: (draft && draft.savedBy) || who });
+      setDraftPanel(null);
+      try { window.history.replaceState(null, "", `/proposals?draft=${r.id}&k=${r.k}`); } catch {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      setDraftMsg(r.emailed ? `Draft saved at ${t}. We've emailed you a link so you can carry on from any computer.` : `Draft saved at ${t}.`);
+    } catch (e) {
+      setDraftMsg(e.message || "Couldn't save the draft. Try again in a moment.");
+    } finally { setBusy(""); }
+  }
+
   function startAgain() {
     if (!confirm("Clear this proposal and start a new one?")) return;
     setP(blankProposal());
     setPage("title");
     setOpen("client");
+    setDraft(null); setDraftMsg("");
+    try { window.history.replaceState(null, "", "/proposals"); } catch {}
   }
 
   // ---- client website: photos + logo ----
@@ -283,7 +338,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
     try {
       const res = await fetch("/api/proposals/submit", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proposal: p, submitter: submit }),
+        body: JSON.stringify({ proposal: p, submitter: submit, draft: draft ? { id: draft.id, k: draft.k } : null }),
       });
       const r = await res.json();
       if (!res.ok) throw new Error(r.error);
@@ -317,11 +372,28 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   }
 
   const two = !!p.twoConsultants;
-  const toggle = (k) => setOpen((o) => (o === k ? "" : k));
+  // Opening a section also shows its page in the preview.
+  const SECTION_PAGE = { client: "title", consultants: "title", understanding: "understanding", about: "about", role: "role", approach: "approach",
+    branded: "branded", search: "search", credentials: "credentials", terms: "terms", appendices: "appendices", pictures: "title" };
+  const toggle = (k) => {
+    if (open !== k && SECTION_PAGE[k]) setPage(SECTION_PAGE[k]);
+    setOpen((o) => (o === k ? "" : k));
+  };
   const benefits = p.benefits && p.benefits.length ? p.benefits : [""];
 
   return (
     <div className="peditor">
+      {limitMsg ? (
+        <div className="modal-back" role="dialog" aria-modal="true" onClick={() => setLimitMsg(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Character limit reached</h3>
+            <p><strong>{limitMsg.label}</strong> can be up to {limitMsg.max.toLocaleString("en-GB")} characters so it fits on the page.
+              {limitMsg.tried > limitMsg.max + 1 ? ` The text was ${limitMsg.tried.toLocaleString("en-GB")} characters, so everything after the limit has been cut off.` : " Anything more won't fit."}</p>
+            <p className="hint">Shorten the wording to make room for anything else you want to say.</p>
+            <div className="actions"><button className="btn btn-primary" type="button" onClick={() => setLimitMsg(null)} autoFocus>OK</button></div>
+          </div>
+        </div>
+      ) : null}
       <div className="pform">
         {savedDraft && !review ? (
           <div className="done-msg" style={{ marginBottom: 14 }}>
@@ -340,7 +412,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
             <button type="button" className="btn btn-ghost btn-small" onClick={findFromWebsite} disabled={siteState.busy}>
               {siteState.busy ? "Looking…" : "Get photos, logo & About text from the website"}
             </button>
-            {siteState.msg ? <div className="hint">{siteState.msg}</div> : <div className="hint">Pulls the client’s logo and general photos (no headshots or news pictures) and places them on the pages, and drafts the About section from their website.</div>}
+            {siteState.msg ? <div className="hint">{siteState.msg}{!siteState.busy && /photo/i.test(siteState.msg) ? <div style={{ marginTop: 6 }}><strong>Note: Marketing will finalise all imagery and upload more images should there not be enough from the client’s website.</strong></div> : null}</div> : <div className="hint">Pulls the client’s logo and general photos (no headshots or news pictures) and places them on the pages, and drafts the About section from their website.</div>}
           </div>
           <div className="row">
             <label className="label"><span>Client logo <span className="opt">(found automatically, or upload a PNG/SVG)</span></span></label>
@@ -426,9 +498,13 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
             <label className="label"><span>Benefits</span><span className="count">{benefits.filter((b) => b.trim()).length}/{LIMITS.benefits}</span></label>
             {benefits.map((b, i) => (
               <div key={i} className="bullet-row">
-                <input className="input" value={b} maxLength={LIMITS.benefit} spellCheck lang="en-GB" placeholder={`Benefit ${i + 1}`}
+                <input className="input" value={b} spellCheck lang="en-GB" placeholder={`Benefit ${i + 1}`}
                   onFocus={() => setPage("role")}
-                  onChange={(e) => set("benefits", benefits.map((x, j) => (j === i ? e.target.value : x)))} />
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    if (v.length > LIMITS.benefit) { limitHit(`Benefit ${i + 1}`, LIMITS.benefit, v.length); v = v.slice(0, LIMITS.benefit); }
+                    set("benefits", benefits.map((x, j) => (j === i ? v : x)));
+                  }} />
                 {benefits.length > 1 ? <button type="button" className="link" onClick={() => set("benefits", benefits.filter((_, j) => j !== i))}>Remove</button> : null}
               </div>
             ))}
@@ -484,6 +560,14 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
         <Section title={`${p.nda ? 9 : 10}. Terms & Fees`} open={open === "terms"} onToggle={() => toggle("terms")} done>
           <Text label="Fee" path="fee" max={LIMITS.fee} page="terms" placeholder="25%" {...f} hint="Shown as “Fee | 25% + VAT of package.”" />
+          <Text label="Payment terms" path="paymentTerms" max={LIMITS.paymentTerms} multiline rows={4} page="terms" {...f} hint="One bullet point per line (up to 5)." />
+          {p.paymentTerms !== PAYMENT_TERMS ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("paymentTerms", PAYMENT_TERMS)}>Reset to standard wording</button> : null}
+          <Text label="Note under the payment terms" path="paymentNote" max={LIMITS.paymentNote} multiline rows={2} page="terms" {...f} optional />
+          {p.paymentNote !== PAYMENT_NOTE ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("paymentNote", PAYMENT_NOTE)}>Reset to standard wording</button> : null}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 160px" }}><Text label="Guarantee period (weeks)" path="guaranteeWeeks" max={LIMITS.weeks} page="terms" placeholder="16" {...f} /></div>
+            <div style={{ flex: "1 1 160px" }}><Text label="Payment due (days from invoice)" path="paymentDays" max={LIMITS.days} page="terms" placeholder="30" {...f} /></div>
+          </div>
         </Section>
 
         <Section title={`${p.nda ? 10 : 11}. Appendices`} open={open === "appendices"} onToggle={() => toggle("appendices")} done>
@@ -530,7 +614,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
                   return (
                     <button key={ph.url} type="button" disabled={!fits} title={fits ? "From the client’s website" : "Too small for this spot"}
                       className={"thumb site" + (p[s.key] === ph.url ? " on" : "") + (fits ? "" : " small")}
-                      onClick={() => { pickPhoto(s.key, ph.url); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
+                      onClick={() => { pickPhoto(s.key, ph.url); setPage(slotPage(s.key)); }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={ph.url} alt="" loading="lazy" />
                     </button>
@@ -538,7 +622,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
                 })}
                 {STOCK_PHOTOS.map((src) => (
                   <button key={src} type="button" className={"thumb" + (p[s.key] === src ? " on" : "")}
-                    onClick={() => { pickPhoto(s.key, src); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }}>
+                    onClick={() => { pickPhoto(s.key, src); setPage(slotPage(s.key)); }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={src} alt="" loading="lazy" />
                   </button>
@@ -553,7 +637,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               </div>
               {p[s.key] ? (
                 <PhotoFramer src={p[s.key]} slot={s} pos={(p.photoPos || {})[s.key]}
-                  onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [s.key]: pos } })); setPage(s.key === "photoTitle" ? "title" : s.key === "photoUnderstanding" ? "understanding" : s.key === "photoAbout" ? "about" : s.key === "photoRole" ? "role" : "approach"); }} />
+                  onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [s.key]: pos } })); setPage(slotPage(s.key)); }} />
               ) : null}
             </div>
           ))}
@@ -617,8 +701,33 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <>
             <div className="actions">
               <button type="button" className="btn btn-ghost" onClick={runCheck} disabled={checkBusy}>{checkBusy ? "Checking…" : "Check spelling & grammar"}</button>
-              <button type="button" className="btn btn-ghost" onClick={downloadPdf} disabled={!!busy}>{busy && !submit ? busy : "Download PDF"}</button>
+              <button type="button" className="btn btn-ghost" disabled={!!busy} onClick={() => {
+                if (draft) saveDraft(null);
+                else setDraftPanel({ name: p.consultant1 || "", email: p.c1.email || emailFor(p.consultant1) || "" });
+              }}>{busy === "Saving draft…" ? busy : "Save draft"}</button>
             </div>
+            {draftPanel ? (
+              <div className="psec open send-panel">
+                <div className="psec-body" style={{ borderTop: 0 }}>
+                  <h3 className="group-title" style={{ marginTop: 0 }}>Save draft</h3>
+                  <p className="hint" style={{ marginTop: 0 }}>We’ll email you a link so you can carry on from any computer.</p>
+                  <div className="row"><label className="label"><span>Your name</span></label>
+                    <input className="input" value={draftPanel.name} onChange={(e) => setDraftPanel({ ...draftPanel, name: e.target.value })} /></div>
+                  <div className="row"><label className="label"><span>Your email</span></label>
+                    <input className="input" type="email" value={draftPanel.email} onChange={(e) => setDraftPanel({ ...draftPanel, email: e.target.value })} /></div>
+                  <div className="actions">
+                    <button type="button" className="btn btn-primary" onClick={() => saveDraft(draftPanel)} disabled={!!busy || !draftPanel.email.trim()}>{busy === "Saving draft…" ? busy : "Save draft"}</button>
+                    <button type="button" className="btn btn-ghost" onClick={() => setDraftPanel(null)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {draftMsg ? (
+              <div className="done-msg">
+                {draftMsg}
+                {draft && draft.link ? <> <button type="button" className="link" onClick={() => { navigator.clipboard && navigator.clipboard.writeText(draft.link); setDraftMsg("Link copied. Paste it anywhere to come back to this draft."); }}>Copy the link</button></> : null}
+              </div>
+            ) : null}
             <div className="actions">
               <button type="button" className="btn btn-primary" disabled={!!busy || checkBusy} onClick={async () => {
                 setDone("");
@@ -628,7 +737,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               }}>Send for proof-reading</button>
               <button type="button" className="btn btn-ghost" onClick={startAgain}>Start a new proposal</button>
             </div>
-            <p className="hint">Your work is saved in this browser as you go.</p>
+            <p className="hint">{draft ? "Press Save draft to update your saved copy." : "Your work is kept in this browser as you go. Save draft keeps a copy you can open from any computer."}</p>
           </>
         )}
       </div>
@@ -723,6 +832,9 @@ function BrandedAdPicker({ p, set, setPage }) {
     </div>
   );
 }
+
+// Which preview page each photo space is on.
+const slotPage = (key) => ({ photoTitle: "title", photoUnderstanding: "understanding", photoAbout: "about", photoRole: "role", photoApproach: "approach", photoTerms: "terms" })[key] || "title";
 
 // Drag a photo around inside its space. It always covers the space, so moving it only changes
 // which part of the photo shows; it can't leave a gap.

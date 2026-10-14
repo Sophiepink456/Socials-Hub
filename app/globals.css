@@ -287,3 +287,9 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .table th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .pill-ok { color: #3d5a0a; font-weight: 700; } .pill-no { color: #b3261e; font-weight: 700; }
 .pages-scroll { display: flex; flex-direction: column; gap: 18px; }
+
+/* Popup (e.g. character limit reached) */
+.modal-back { position: fixed; inset: 0; background: rgba(20, 20, 20, 0.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.modal { background: #fff; border-radius: 14px; padding: 24px 26px; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); }
+.modal h3 { font-size: 20px; margin-bottom: 8px; }
+.modal p { line-height: 1.5; }
