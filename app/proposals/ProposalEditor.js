@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { proposalPages } from "../../lib/proposal/pages";
-import { EXTRA_STYLES, styleById, defaultsFor } from "../../lib/proposal/extra";
+import { EXTRA_STYLES, styleById, defaultsFor, wordingFields } from "../../lib/proposal/extra";
 import {
   APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
-  assignPhotos, photoFits, textFields, fieldName,
+  assignPhotos, photoFits, textFields, fieldName, SECTIONS,
 } from "../../lib/proposal/data";
 
 const DRAFT_KEY = "proposal-draft-v1";
@@ -651,6 +651,12 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         </Section>
 
         {review ? (
+          <Section title={`Edit page wording${Object.keys(p.pageText || {}).length ? ` (${Object.keys(p.pageText).length} page${Object.keys(p.pageText).length === 1 ? "" : "s"} changed)` : ""} (back office only)`} open={open === "wording"} onToggle={() => toggle("wording")} done>
+            <PageWording p={p} setP={setP} setPage={setPage} pages={pages} />
+          </Section>
+        ) : null}
+
+        {review ? (
           <Section title={`Add or remove pages${(p.extraPages || []).length || (p.hiddenPages || []).length ? ` (${(p.extraPages || []).length} added, ${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "extra"} onToggle={() => toggle("extra")} done>
             <ExtraPages p={p} setP={setP} setPage={setPage} pages={pages} />
           </Section>
@@ -1162,6 +1168,83 @@ function ExtraPages({ p, setP, setPage, pages }) {
         );
       })}
       {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the proposal and its PDF.</p> : null}
+    </>
+  );
+}
+
+// Back office: change the fixed wording on this proposal's standard pages. Each box starts with the
+// standard text; only changed boxes are kept, so anything left alone still follows the form
+// (for example the fee or guarantee weeks). Clearing a box puts the standard text back.
+const WORDING_PAGES = [["title", "Title page"], ["contents", "Contents"], ...SECTIONS.map((s) => [s.id, s.name]), ["end", "End page"]];
+const BAKED = { branded: true, candidate: true };
+function PageWording({ p, setP, setPage, pages }) {
+  const [openKey, setOpenKey] = useState("");
+  const all = p.pageText || {};
+  const hidden = new Set(p.hiddenPages || []);
+  function setField(key, k, nv, def) {
+    setP((cur) => {
+      const next = { ...(cur.pageText || {}) };
+      const pg = { ...(next[key] || {}) };
+      if (!String(nv).trim() || nv === def) delete pg[k]; else pg[k] = nv;
+      if (Object.keys(pg).length) next[key] = pg; else delete next[key];
+      return { ...cur, pageText: next };
+    });
+  }
+  function reset(key) {
+    if (!confirm("Put all the standard wording back on this page?")) return;
+    setP((cur) => { const next = { ...(cur.pageText || {}) }; delete next[key]; return { ...cur, pageText: next }; });
+  }
+  const box = (key, f, def) => {
+    const own = all[key] || {};
+    const val = own[f.k] != null ? own[f.k] : def;
+    const onChange = (nv) => {
+      if (f.max && nv.length > f.max) { limitHit(f.label, f.max, nv.length); nv = nv.slice(0, f.max); }
+      setField(key, f.k, nv, def);
+    };
+    const id = `w-${key}-${f.k}`;
+    return (
+      <div key={f.k} className="row">
+        <label className="label" htmlFor={id}><span>{f.label}{own[f.k] != null ? " · changed" : ""}</span>{f.max ? <Count value={val} max={f.max} /> : null}</label>
+        {f.kind === "text"
+          ? <input id={id} className="input" value={val} placeholder={f.ph || ""} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => onChange(ev.target.value)} />
+          : <textarea id={id} className="input" rows={f.kind === "lines" ? 4 : 3} value={val} placeholder={f.ph || ""} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => onChange(ev.target.value)} />}
+      </div>
+    );
+  };
+  return (
+    <>
+      <p className="hint" style={{ marginTop: 0 }}>Change any of the standard wording on this proposal’s pages. Each box starts with the standard text. Clear a box (or press <b>Reset page</b>) to go back to the standard wording. The client’s details, role, consultants and so on stay in the sections above. Press <b>Save changes</b> to keep it.</p>
+      {WORDING_PAGES.map(([key, label]) => {
+        const sec = SECTIONS.find((s) => s.id === key);
+        const pageNo = pages.findIndex((pg) => pg.key === key) + 1;
+        const changed = Object.keys(all[key] || {}).length;
+        const isOpen = openKey === key;
+        const fields = BAKED[key] ? [] : wordingFields(key, p);
+        return (
+          <div key={key} className="panel" style={{ padding: 14, marginTop: 10, opacity: hidden.has(key) ? 0.6 : 1 }}>
+            <div className="row" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 0 }}>
+              <button type="button" className="link" style={{ fontWeight: 700, textAlign: "left" }} onClick={() => { setOpenKey(isOpen ? "" : key); if (pageNo > 0) setPage(key); }}>
+                {isOpen ? "–" : "+"} {label}{pageNo > 0 ? ` · page ${pageNo}` : " (removed)"}{changed ? ` · ${changed} change${changed === 1 ? "" : "s"}` : ""}
+              </button>
+              {changed ? <button type="button" className="link muted" onClick={() => reset(key)}>Reset page</button> : null}
+            </div>
+            {isOpen ? (
+              <div style={{ marginTop: 12 }}>
+                {sec ? (
+                  <>
+                    {box(key, { k: "__name", label: "Name on the Contents page and footer", kind: "text", max: 40 }, sec.name)}
+                    {box(key, { k: "__desc", label: "Line under it on the Contents page", kind: "area", max: 120, ph: key === "appendices" ? "Standard: lists the appendices" : "" }, sec.desc)}
+                  </>
+                ) : null}
+                {fields.map((f) => box(key, f, String(f.def(p) ?? "")))}
+                {key === "search" ? <div className="hint">Changing the heading or the line under it redraws the banner, using the Our Approach photo unless a banner picture is uploaded in Back-office pictures.</div> : null}
+                {key === "terms" ? <div className="hint">If you change a bottom box’s text, it no longer follows the guarantee weeks or payment days above, and the bold part becomes normal text.</div> : null}
+                {BAKED[key] ? <div className="hint">The rest of the wording on this page is part of the page design picture, so only its name can be changed here.</div> : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </>
   );
 }
