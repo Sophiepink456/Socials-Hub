@@ -96,7 +96,7 @@ export default function Home() {
           </a>
         ))}
       </div>
-      <p className="hint" style={{ marginTop: 48, textAlign: "center" }}><a href="/settings">Settings</a></p>
+      <p className="hint" style={{ marginTop: 48, textAlign: "center" }}><a href="/settings">Marketing Team Access</a></p>
     </main>
   );
 }
