@@ -176,8 +176,6 @@ export default function Settings() {
         {msg && /^Claude/.test(msg) ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
       </div>
 
-      <CandidatePictures code={code} initial={data.settings.candidatePack || {}} />
-
       {data.checks.ads ? <AdNames code={code} /> : null}
 
     </div>
@@ -258,91 +256,6 @@ function AdNames({ code }) {
           </div>
         </>
       ) : null}
-    </div>
-  );
-}
-
-// Shrink a chosen picture in the browser before uploading (keeps it sharp, keeps uploads small).
-function shrink(file, max = 2400) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
-      resolve(c.toDataURL("image/jpeg", 0.92));
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => reject(new Error("That file couldn't be read as a picture."));
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-// The three screens on the Candidate Packs page. Changes apply to every proposal from then on.
-const PACK_SLOTS = [
-  { key: "back", label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
-  { key: "front", label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
-  { key: "ipad", label: "iPad screen", hint: "Portrait, about 3:4, e.g. 1470 × 1968. Shown from the top down.", ratio: "490 / 656" },
-];
-
-function CandidatePictures({ code, initial }) {
-  const [pack, setPack] = useState({ back: "", front: "", ipad: "", ...initial });
-  const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
-
-  async function saveSlot(key, url) {
-    const next = { ...pack, [key]: url };
-    const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ settings: { candidatePack: next } }) });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || "Couldn't save.");
-    setPack({ back: "", front: "", ipad: "", ...(j.settings.candidatePack || next) });
-  }
-
-  async function upload(key, file) {
-    if (!file) return;
-    setBusy(key); setMsg("");
-    try {
-      const dataUrl = await shrink(file);
-      const r = await fetch("/api/settings/upload", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ dataUrl }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      await saveSlot(key, j.url);
-      setMsg("Saved. Every proposal now uses this picture on the Candidate Packs page.");
-    } catch (e) { setMsg(e.message || "Couldn't upload that picture."); } finally { setBusy(""); }
-  }
-
-  async function reset(key) {
-    setBusy(key); setMsg("");
-    try { await saveSlot(key, ""); setMsg("Back to the standard picture."); } catch (e) { setMsg(e.message); } finally { setBusy(""); }
-  }
-
-  return (
-    <div className="panel">
-      <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Candidate Packs page pictures</h3>
-      <p className="hint" style={{ marginTop: 0 }}>Swap the three screens shown on the Candidate Packs page. Consultants can’t change these; they apply to every proposal from now on, including ones already in progress when their PDF is next made.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-        {PACK_SLOTS.map((s) => (
-          <div key={s.key}>
-            <div className="label"><span>{s.label}</span></div>
-            <div style={{ aspectRatio: s.ratio, maxHeight: 220, background: "#eee", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {pack[s.key]
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={pack[s.key]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.key === "ipad" ? "center top" : "center" }} />
-                : <span className="hint">Standard picture</span>}
-            </div>
-            <div className="hint">{s.hint}</div>
-            <div className="actions" style={{ marginTop: 6 }}>
-              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
-                {busy === s.key ? "Uploading…" : "Upload picture"}
-                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(e) => { upload(s.key, e.target.files && e.target.files[0]); e.target.value = ""; }} />
-              </label>
-              {pack[s.key] ? <button type="button" className="link" disabled={!!busy} onClick={() => reset(s.key)}>Back to standard</button> : null}
-            </div>
-          </div>
-        ))}
-      </div>
-      {msg ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
     </div>
   );
 }

@@ -374,7 +374,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const two = !!p.twoConsultants;
   // Opening a section also shows its page in the preview.
   const SECTION_PAGE = { client: "title", consultants: "title", understanding: "understanding", about: "about", role: "role", approach: "approach",
-    branded: "branded", search: "search", credentials: "credentials", terms: "terms", appendices: "appendices", pictures: "title" };
+    branded: "branded", candidate: "candidate", search: "search", credentials: "credentials", terms: "terms", appendices: "appendices", pictures: "title" };
   const toggle = (k) => {
     if (open !== k && SECTION_PAGE[k]) setPage(SECTION_PAGE[k]);
     setOpen((o) => (o === k ? "" : k));
@@ -529,6 +529,12 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <Section title="7. Branded Campaigns" open={open === "branded"} onToggle={() => toggle("branded")} done>
             <BrandedAdPicker p={p} set={set} setPage={setPage} />
             <button type="button" className="btn btn-ghost btn-small" onClick={() => setPage("branded")}>Show this page</button>
+          </Section>
+        ) : null}
+
+        {review ? (
+          <Section title="Candidate Packs pictures (back office only)" open={open === "candidate"} onToggle={() => toggle("candidate")} done>
+            <CandidatePictures p={p} set={set} setPage={setPage} />
           </Section>
         ) : null}
 
@@ -882,6 +888,59 @@ function PhotoFramer({ src, slot, pos, onChange }) {
         {pos && (pos.x !== 50 || pos.y !== 50) ? <> <button type="button" className="link" onClick={() => onChange({ x: 50, y: 50 })}>Centre it</button></> : null}
       </div>
     </div>
+  );
+}
+
+// Back office only: swap the three screens on this proposal's Candidate Packs page.
+const PACK_SLOTS = [
+  { key: "back", label: "Back screen (top left, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
+  { key: "front", label: "Front screen (middle, tilted)", hint: "Landscape 16:9, e.g. a 1920 × 1080 slide.", ratio: "16 / 9" },
+  { key: "ipad", label: "iPad screen", hint: "Portrait, about 3:4, e.g. 1470 × 1968. Shown from the top down.", ratio: "490 / 656" },
+];
+
+function CandidatePictures({ p, set, setPage }) {
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  const pack = p.candidatePack || {};
+  async function upload(key, file) {
+    if (!file) return;
+    setBusy(key); setMsg("");
+    try {
+      const dataUrl = await readImage(file, 2400);
+      const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      set("candidatePack", { ...pack, [key]: j.url });
+      setPage("candidate");
+      setMsg("Picture added. Press Save changes to keep it.");
+    } catch (e) { setMsg(e.message || "Couldn't upload that picture."); } finally { setBusy(""); }
+  }
+  return (
+    <>
+      <p className="hint" style={{ marginTop: 0 }}>Swap the three screens on this proposal’s Candidate Packs page. Consultants don’t see this section.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+        {PACK_SLOTS.map((s) => (
+          <div key={s.key}>
+            <div className="label"><span>{s.label}</span></div>
+            <div style={{ aspectRatio: s.ratio, maxHeight: 200, background: "#eee", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {pack[s.key]
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={pack[s.key]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: s.key === "ipad" ? "center top" : "center" }} />
+                : <span className="hint">Standard picture</span>}
+            </div>
+            <div className="hint">{s.hint}</div>
+            <div className="actions" style={{ marginTop: 6 }}>
+              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
+                {busy === s.key ? "Uploading…" : "Upload picture"}
+                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(e) => { upload(s.key, e.target.files && e.target.files[0]); e.target.value = ""; }} />
+              </label>
+              {pack[s.key] ? <button type="button" className="link" onClick={() => { set("candidatePack", { ...pack, [s.key]: "" }); setPage("candidate"); }}>Back to standard</button> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+      {msg ? <div className="hint" style={{ marginTop: 8 }}>{msg}</div> : null}
+    </>
   );
 }
 
