@@ -81,7 +81,7 @@ export default function Home() {
         {TOOLS.map((t) => <ToolCard key={t.id} t={t} />)}
       </div>
 
-      <h2 className="section-title">Social designs<span className="g">.</span></h2>
+      <h2 className="section-title">Social Designs<span className="g">.</span></h2>
       <p className="lede">Pick the post you want to make, fill in the details and download it ready for LinkedIn.</p>
 
       <div className="grid">
