@@ -165,6 +165,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
 
   // Homepage picture for the laptop + brand colours.
   const [colourMsg, setColourMsg] = useState("");
+  const [big, setBig] = useState(false);
   async function pickColoursAgain() {
     setColourMsg("Picking the brand colours…");
     try {
@@ -174,7 +175,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
       if (!r.ok) throw new Error(j.error);
       if (!j.colours) { setColourMsg("Couldn’t find brand colours on the logo or website. Choose them with the colour boxes."); return; }
       setP((cur) => ({ ...cur, accent: j.colours.accent, dark: j.colours.dark, coloursAuto: true }));
-      setColourMsg(`Colours picked from the ${j.colours.source || "website"}.`);
+      setColourMsg(j.colours.source === "homepage" ? "Colours picked from the homepage picture." : "Colours picked from the website’s menus, backgrounds, buttons and logo.");
       setPage("about");
     } catch (e) { setColourMsg(e.message || "Couldn’t pick the colours. Try again in a moment."); }
   }
@@ -626,8 +627,28 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}>
           <div ref={measureRef} style={{ width: 1920 }}>{pages.map((pg) => <div key={pg.key} data-page={pg.key}>{pg.el}</div>)}</div>
         </div>
-        <div className="preview-note">Page {pages.indexOf(current) + 1} of {pages.length} · 1920 × 1080</div>
+        <div className="preview-note">Page {pages.indexOf(current) + 1} of {pages.length} · 1920 × 1080 · <button type="button" className="link" onClick={() => setBig(true)}>View full size</button></div>
+        {big ? <FullSize onClose={() => setBig(false)}>{current.el}</FullSize> : null}
       </div>
+    </div>
+  );
+}
+
+// The page at (nearly) its real size. Small previews make thin text look heavier on some
+// screens, so this is the way to check the typography against the design.
+function FullSize({ onClose, children }) {
+  useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-label="Full size page" onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.82)", overflow: "auto", padding: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ width: "min(1920px, 100%)", flex: "none" }} onClick={(e) => e.stopPropagation()}>
+        <ScaledPage>{children}</ScaledPage>
+      </div>
+      <button type="button" className="btn btn-ghost" style={{ marginTop: 14, background: "#fff" }} onClick={onClose}>Close</button>
     </div>
   );
 }
