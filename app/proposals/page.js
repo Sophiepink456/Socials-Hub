@@ -1,4 +1,6 @@
 import ProposalEditor from "./ProposalEditor";
+import HoverPreview from "../HoverPreview";
+import { PROPOSAL_PAGES, PACK_PAGES } from "../../lib/previewPages";
 
 export const metadata = { title: "Proposals & Candidate Packs · Marketing Hub" };
 
@@ -15,8 +17,8 @@ export default function ProposalsPage({ searchParams }) {
     );
   }
   const cards = [
-    { href: "/proposals/new", title: "Proposal", img: "/proposal/preview.jpg", tag: "Start a proposal", blurb: "The client proposal: our understanding, approach, search process, terms and fees." },
-    { href: "/proposals/candidate-pack", title: "Candidate Pack", img: "/proposal/pack-preview.jpg", tag: "Start a candidate pack", blurb: "The pack for candidates: about the client, the role, what's on offer and next steps." },
+    { href: "/proposals/new", title: "Proposal", pages: PROPOSAL_PAGES, tag: "Start a proposal", blurb: "The client proposal: our understanding, approach, search process, terms and fees." },
+    { href: "/proposals/candidate-pack", title: "Candidate Pack", pages: PACK_PAGES, tag: "Start a candidate pack", blurb: "The pack for candidates: about the client, the role, what's on offer and next steps." },
   ];
   return (
     <main className="wrap">
@@ -28,8 +30,7 @@ export default function ProposalsPage({ searchParams }) {
           <a key={c.href} href={c.href} className="card">
             <h2 className="card-title">{c.title}</h2>
             <div className="tool-img">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.img} alt="" className="tool-photo" />
+              <HoverPreview images={c.pages} />
               <span className="tool-tag live">{c.tag}</span>
             </div>
             <div className="card-meta">{c.blurb}</div>

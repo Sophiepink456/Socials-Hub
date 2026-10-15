@@ -1,4 +1,6 @@
 import { DESIGNS } from "../lib/designs";
+import HoverPreview from "./HoverPreview";
+import { PROPOSAL_PAGES, PACK_PAGES } from "../lib/previewPages";
 
 // Tools shown above the social designs. `href: null` means it's coming soon:
 // the tile is shown with a placeholder preview but isn't clickable yet.
@@ -10,7 +12,7 @@ const TOOLS = [
     href: "/proposals",
     cta: "Start a proposal or pack",
     icon: "doc",
-    image: "/proposal/preview.jpg",
+    preview: [PROPOSAL_PAGES[0], PACK_PAGES[0]],
   },
   {
     id: "request",
@@ -55,7 +57,9 @@ function ToolCard({ t }) {
     <>
       <h2 className="card-title">{t.title}</h2>
       <div className={"tool-img" + (t.href ? "" : " soon")}>
-        {t.image ? (
+        {t.preview ? (
+          <HoverPreview images={t.preview} mode="swap" />
+        ) : t.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={t.image} alt="" className="tool-photo" />
         ) : <div className="tool-icon">{ICONS[t.icon]}</div>}

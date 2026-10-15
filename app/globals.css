@@ -293,3 +293,15 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .modal { background: #fff; border-radius: 14px; padding: 24px 26px; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); }
 .modal h3 { font-size: 20px; margin-bottom: 8px; }
 .modal p { line-height: 1.5; }
+
+/* Hover page previews on the proposal and candidate pack tiles (app/HoverPreview.js) */
+.hp { position: absolute; inset: 0; overflow: hidden; }
+.hp-track { display: flex; height: 100%; transition: transform .55s cubic-bezier(.65,0,.35,1); }
+.hp-swap .hp-track { transition-duration: .7s; }
+.hp-track img { flex: none; width: 100%; height: 100%; object-fit: cover; display: block; }
+.hp-dots { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 5px; opacity: 0; transition: opacity .3s; }
+.hp-dots.on { opacity: 1; }
+.hp-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.5); transition: background .2s, transform .2s; }
+.hp-dots i.cur { background: var(--green); transform: scale(1.35); }
+.tool-img .tool-tag { z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .hp-track { transition: none; } }
