@@ -80,7 +80,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
           .then(({ ok, j }) => {
             if (!ok) { setDraftMsg(j.error || "That draft link isn't valid any more."); return; }
-            setP(normalisePack(j.data));
+            loading.current = true; setP(normalisePack(j.data));
             setDraft({ id: j.id, k: j.k, link: window.location.href, savedBy: j.savedBy });
             setDraftMsg(j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
           }).catch(() => setDraftMsg("Couldn't open that draft. Try the link again."));
@@ -108,19 +108,32 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
   // If a change makes a column overflow, the change is undone and the "page is full" popup shows.
   const measureRef = useRef(null);
   const lastGood = useRef(p);
+  const lastFit = useRef({});
+  // A whole pack being opened (draft, proposal copy, start again) is taken as it is, even if a page
+  // is already too full; only later edits that make it fuller are stopped.
+  const loading = useRef(true);
   useLayoutEffect(() => {
     const root = measureRef.current;
     if (!root) return;
-    let over = null;
+    // How far each column runs past its space (0 = fits).
+    const now = {};
     root.querySelectorAll("[data-fit]").forEach((box) => {
       const inner = box.querySelector("[data-fit-inner]");
-      if (inner && inner.offsetHeight > box.clientHeight + 1) over = over || box.getAttribute("data-fit");
+      const k = box.getAttribute("data-fit") + "|" + (box.closest("[data-page]") || {}).getAttribute?.("data-page");
+      now[k] = inner ? Math.max(0, inner.offsetHeight - box.clientHeight) : 0;
     });
-    if (over && lastGood.current !== p) {
-      const back = lastGood.current;
-      setP(back);
-      window.dispatchEvent(new CustomEvent("proposal-limit", { detail: { full: true, label: over } }));
-    } else if (!over) lastGood.current = p;
+    // Only a change that makes a column run further over is undone. Anything else (colours,
+    // pictures, other pages, or shortening text on a page that was already too full) goes through.
+    const before = lastFit.current;
+    const worse = Object.keys(now).find((k) => now[k] > 1 && now[k] > (before[k] ?? 0) + 1);
+    if (worse && lastGood.current !== p && !loading.current) {
+      setP(lastGood.current);
+      window.dispatchEvent(new CustomEvent("proposal-limit", { detail: { full: true, label: worse.split("|")[0] } }));
+      return;
+    }
+    loading.current = false;
+    lastGood.current = p;
+    lastFit.current = now;
   }, [p]);
 
   function pickConsultant(which, name) {
@@ -142,7 +155,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
       const r = await fetch(`/api/proposals/recent?id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      setP((cur) => normalisePack({ ...cur, ...j.data, coloursAuto: true }));
+      loading.current = true; setP((cur) => normalisePack({ ...cur, ...j.data, coloursAuto: true }));
       setFromMsg("Copied the client, logo, About text, role details, salary, benefits, consultant and photos. Now add the parts only a candidate pack has.");
       setPage("title");
       // The proposal didn't have the brand colours or homepage picture, so fetch those.
@@ -235,7 +248,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
 
   function startAgain() {
     if (!confirm("Clear this candidate pack and start a new one?")) return;
-    setP(blankPack()); setPage("title"); setOpen("start"); setDraft(null); setDraftMsg(""); setIssues(null);
+    loading.current = true; setP(blankPack()); setPage("title"); setOpen("start"); setDraft(null); setDraftMsg(""); setIssues(null);
     try { window.history.replaceState(null, "", PATH); } catch {}
   }
 
@@ -306,7 +319,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         {savedDraft && !review ? (
           <div className="done-msg" style={{ marginBottom: 14 }}>
             You have an unfinished candidate pack{savedDraft.clientName ? ` for ${savedDraft.clientName}` : ""}{savedDraft.roleTitle ? ` (${savedDraft.roleTitle})` : ""}.{" "}
-            <button type="button" className="link" onClick={() => { setP(normalisePack(savedDraft)); setSavedDraft(null); }}>Carry on with it</button>
+            <button type="button" className="link" onClick={() => { loading.current = true; setP(normalisePack(savedDraft)); setSavedDraft(null); }}>Carry on with it</button>
             {" or "}
             <button type="button" className="link" onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setSavedDraft(null); }}>start fresh</button>.
           </div>
@@ -365,11 +378,11 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
             <label className="label"><span>Brand colours</span></label>
             <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
               <label className="check" style={{ gap: 8 }}>
-                <input type="color" value={p.accent || DEFAULT_ACCENT} onChange={(e) => { setColour("accent", e.target.value); setPage("role"); }} style={{ width: 44, height: 32, padding: 0, border: 0, background: "none" }} />
+                <ColourBox value={p.accent || DEFAULT_ACCENT} onPick={(v) => { setColour("accent", v); setPage("role"); }} />
                 Accent <span className="opt">(full stops, icons, lines)</span>
               </label>
               <label className="check" style={{ gap: 8 }}>
-                <input type="color" value={p.dark || DEFAULT_DARK} onChange={(e) => { setColour("dark", e.target.value); setPage("about"); }} style={{ width: 44, height: 32, padding: 0, border: 0, background: "none" }} />
+                <ColourBox value={p.dark || DEFAULT_DARK} onPick={(v) => { setColour("dark", v); setPage("about"); }} />
                 Dark <span className="opt">(About panel, End page)</span>
               </label>
             </div>
@@ -437,7 +450,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
 
         <Section title={`${review ? 4 : 5}. The Opportunity`} open={open === "opportunity"} onToggle={() => toggle("opportunity")} done={!!p.opportunity}>
           <Text label="The opportunity" path="opportunity" max={L.opportunity} multiline rows={10} page="opportunity" {...f}
-            hint="Why the role exists and why it’s a good move. Start a new line for a new paragraph. Leave it blank to leave this page out." />
+            hint="Why the role exists and why it’s a good move. Start a new line for a new paragraph." />
         </Section>
 
         <Section title={`${review ? 5 : 6}. The Role`} open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
@@ -611,7 +624,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         </div>
         <ScaledPage>{current.el}</ScaledPage>
         <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}>
-          <div ref={measureRef} style={{ width: 1920 }}>{pages.map((pg) => <div key={pg.key}>{pg.el}</div>)}</div>
+          <div ref={measureRef} style={{ width: 1920 }}>{pages.map((pg) => <div key={pg.key} data-page={pg.key}>{pg.el}</div>)}</div>
         </div>
         <div className="preview-note">Page {pages.indexOf(current) + 1} of {pages.length} · 1920 × 1080</div>
       </div>
@@ -815,5 +828,18 @@ function PackPagesEditor({ p, setP, setPage, pages }) {
       })}
       {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the pack and its PDF.</p> : null}
     </>
+  );
+}
+
+// A colour box. Dragging round the colour picker updates the pack a moment after you stop,
+// so the preview keeps up instead of redrawing every page on every tiny move.
+function ColourBox({ value, onPick }) {
+  const [v, setV] = useState(value);
+  const t = useRef(null);
+  useEffect(() => { setV(value); }, [value]);
+  useEffect(() => () => clearTimeout(t.current), []);
+  return (
+    <input type="color" value={v} style={{ width: 44, height: 32, padding: 0, border: 0, background: "none", cursor: "pointer" }}
+      onChange={(e) => { const nv = e.target.value; setV(nv); clearTimeout(t.current); t.current = setTimeout(() => onPick(nv), 150); }} />
   );
 }
