@@ -58,7 +58,7 @@ function ToolCard({ t }) {
       <h2 className="card-title">{t.title}</h2>
       <div className={"tool-img" + (t.href ? "" : " soon")}>
         {t.preview ? (
-          <HoverPreview images={t.preview} mode="swap" />
+          <HoverPreview images={t.preview} mode="swap" sizes="(max-width: 700px) 100vw, 440px" />
         ) : t.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={t.image} alt="" className="tool-photo" />

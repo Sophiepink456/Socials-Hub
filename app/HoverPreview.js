@@ -4,11 +4,17 @@ import { useEffect, useRef, useState } from "react";
 
 const PAGE_MS = 1300;
 
+// Each page image also exists pre-shrunk (name-480.jpg, -720, -960, -1440) so the browser
+// picks one close to the tile's real size instead of squashing the 1920px original.
+const WIDTHS = [480, 720, 960, 1440];
+const sizesFor = (src) =>
+  WIDTHS.map((w) => `${src.replace(/\.jpg$/, `-${w}.jpg`)} ${w}w`).concat(`${src} 1920w`).join(", ");
+
 // Sits inside a .tool-img box. At rest it shows the first image.
 // mode "deck": on hover it flicks through every page, then returns to the cover.
 // mode "swap": on hover it slides once to the second image (used on the homepage).
 // Touch screens can't hover, so there it plays by itself while on screen.
-export default function HoverPreview({ images, mode = "deck" }) {
+export default function HoverPreview({ images, mode = "deck", sizes = "(max-width: 700px) 100vw, 640px" }) {
   const box = useRef(null);
   const [i, setI] = useState(0);
   const [on, setOn] = useState(false);
@@ -57,7 +63,15 @@ export default function HoverPreview({ images, mode = "deck" }) {
       <div className="hp-track" style={{ transform: `translateX(${-100 * i}%)` }}>
         {images.map((src, n) => (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={src} src={src} alt="" loading={n === 0 ? "eager" : "lazy"} />
+          <img
+            key={src}
+            src={src}
+            srcSet={sizesFor(src)}
+            sizes={sizes}
+            alt=""
+            loading={n === 0 ? "eager" : "lazy"}
+            decoding="async"
+          />
         ))}
       </div>
       {mode === "deck" && (
