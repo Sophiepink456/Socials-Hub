@@ -79,8 +79,18 @@ function ToolCard({ t }) {
 export default function Home() {
   return (
     <main className="wrap">
-      <h1 className="h1">Marketing Hub<span className="g">.</span></h1>
-      <p className="lede">Everything you need from marketing in one place.</p>
+      <div className="home-head">
+        <div>
+          <h1 className="h1">Marketing Hub<span className="g">.</span></h1>
+          <p className="lede">Everything you need from marketing in one place.</p>
+        </div>
+        <a href="/saved" className="btn btn-ghost folder-btn">
+          <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round">
+            <path d="M5 13a3 3 0 0 1 3-3h10l4 5h18a3 3 0 0 1 3 3v19a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V13Z" /><path d="M5 20h38" />
+          </svg>
+          Saved designs
+        </a>
+      </div>
 
       <div className="tools">
         {TOOLS.map((t) => <ToolCard key={t.id} t={t} />)}

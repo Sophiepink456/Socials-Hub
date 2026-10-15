@@ -53,11 +53,31 @@ export default function Settings() {
   }
 
   async function remove(type, r) {
-    if (!confirm(`Remove “${r.client || "Client"} – ${r.role || "Role"}” from the list? Its links will stop working.`)) return;
+    if (!confirm(`Remove “${r.name || `${r.client || "Client"} – ${r.role || "Role"}`}” from the list? Its links will stop working.`)) return;
     const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ remove: { type, id: r.id } }) });
     const j = await res.json();
     if (!res.ok) { alert(j.error || "Couldn't remove it."); return; }
-    setData((d) => ({ ...d, [type === "draft" ? "drafts" : "proposals"]: d[type === "draft" ? "drafts" : "proposals"].filter((x) => x.id !== r.id) }));
+    const list = type === "draft" ? "drafts" : type === "copy" ? "copies" : "proposals";
+    setData((d) => ({ ...d, [list]: d[list].filter((x) => x.id !== r.id) }));
+  }
+
+  async function duplicate(type, r) {
+    const name = window.prompt("Name for the saved copy (e.g. “Warehouse Supervisor – standard pack”):", r.name ? `${r.name} (copy)` : `${r.client || "Client"} – ${r.role || "Role"}`);
+    if (name === null) return;
+    const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ duplicate: { type, id: r.id, name } }) });
+    const j = await res.json();
+    if (!res.ok) { alert(j.error || "Couldn't duplicate it."); return; }
+    setData((d) => ({ ...d, copies: [j.copy, ...(d.copies || [])] }));
+    setMsg(`Saved as “${j.copy.name}”. It’s under Saved copies, and in “Start from one already made” on both forms.`);
+  }
+
+  async function rename(r) {
+    const name = window.prompt("New name:", r.name);
+    if (!name || name === r.name) return;
+    const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ rename: { id: r.id, name } }) });
+    const j = await res.json();
+    if (!res.ok) { alert(j.error || "Couldn't rename it."); return; }
+    setData((d) => ({ ...d, copies: d.copies.map((x) => (x.id === r.id ? { ...x, name: j.name } : x)) }));
   }
 
   async function testClaude() {
@@ -109,12 +129,32 @@ export default function Settings() {
                   <td>{r.consultant}</td>
                   <td>{r.status}</td>
                   <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
-                  <td><button type="button" className="link" onClick={() => remove("proposal", r)}>Remove</button></td>
+                  <td style={{ whiteSpace: "nowrap" }}><button type="button" className="link" onClick={() => duplicate("proposal", r)}>Duplicate</button> · <button type="button" className="link" onClick={() => remove("proposal", r)}>Remove</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : <p className="hint">Nothing submitted yet.</p>}
+        <h3 className="group-title">Saved copies</h3>
+        {data.copies && data.copies.length ? (
+          <table className="table">
+            <thead><tr><th>Name</th><th>Type</th><th>Client – role</th><th>Last saved</th><th></th></tr></thead>
+            <tbody>
+              {data.copies.map((r) => (
+                <tr key={r.id}>
+                  <td><a href={r.link} title="Open and edit this saved copy">{r.name}</a></td>
+                  <td>{r.type}</td>
+                  <td>{r.client || "Client"} – {r.role || "Role"}</td>
+                  <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button type="button" className="link" onClick={() => duplicate("copy", r)}>Duplicate</button> · <button type="button" className="link" onClick={() => rename(r)}>Rename</button> · <button type="button" className="link" onClick={() => remove("copy", r)}>Remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="hint">Press <b>Duplicate</b> on any proposal, candidate pack or draft to keep a named copy. Open a copy to edit it, or pick it under “Start from one already made” on a new form.</p>}
+        {msg && /^Saved as/.test(msg) ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
         {data.drafts && data.drafts.length ? (
           <>
             <h3 className="group-title">Drafts not sent yet</h3>
@@ -127,7 +167,7 @@ export default function Settings() {
                     <td>{r.type}</td>
                     <td>{r.consultant}</td>
                     <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
-                    <td><button type="button" className="link" onClick={() => remove("draft", r)}>Remove</button></td>
+                    <td style={{ whiteSpace: "nowrap" }}><button type="button" className="link" onClick={() => duplicate("draft", r)}>Duplicate</button> · <button type="button" className="link" onClick={() => remove("draft", r)}>Remove</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -160,7 +200,7 @@ export default function Settings() {
           <input id="ads" className="input" value={form.ads} placeholder="https://script.google.com/macros/s/…/exec" onChange={(e) => setForm({ ...form, ads: e.target.value })} />
           <div className="hint">Feeds the branded ads dropdown from the Drive folder. New ads appear automatically.</div>
         </div>
-        {msg && !/^Claude/.test(msg) ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
+        {msg && !/^(Claude|Saved as)/.test(msg) ? <div className="done-msg" style={{ marginBottom: 10 }}>{msg}</div> : null}
         <div className="actions">
           <button className="btn btn-primary" type="button" onClick={save} disabled={!!busy}>{busy === "Saving…" ? busy : "Save settings"}</button>
           <button className="btn btn-ghost" type="button" onClick={testEmail} disabled={!!busy}>{busy === "Sending…" ? busy : "Send test email"}</button>
@@ -178,8 +218,58 @@ export default function Settings() {
         {msg && /^Claude/.test(msg) ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
       </div>
 
+      <StoragePanel code={code} />
+
       {data.checks.ads ? <AdNames code={code} /> : null}
 
+    </div>
+  );
+}
+
+const size = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
+
+// How much storage the hub is using, and a tidy-up of what nothing needs any more.
+function StoragePanel({ code }) {
+  const [rep, setRep] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  const post = async (body) => {
+    const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "That didn't work.");
+    return j;
+  };
+  async function check() {
+    setBusy("Adding it up…"); setMsg("");
+    try { setRep((await post({ storage: true })).storage); } catch (e) { setMsg(e.message); } finally { setBusy(""); }
+  }
+  async function tidy() {
+    setBusy("Looking…"); setMsg("");
+    try {
+      const dry = (await post({ tidy: { dryRun: true } })).tidy;
+      if (!dry.files) { setMsg("Nothing to tidy: everything stored is still in use."); return; }
+      if (!confirm(`Tidying up would delete ${dry.files} file${dry.files === 1 ? "" : "s"} (${size(dry.bytes)}) that nothing uses any more: old versions, out-of-date PDFs and unused pictures over a month old. Go ahead?`)) return;
+      setBusy("Tidying…");
+      const done = (await post({ tidy: {} })).tidy;
+      setMsg(`Done: freed ${size(done.bytes)}.`);
+      setRep((await post({ storage: true })).storage);
+    } catch (e) { setMsg(e.message); } finally { setBusy(""); }
+  }
+  return (
+    <div className="panel">
+      <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Storage</h3>
+      <p className="hint" style={{ marginTop: 0 }}>Vercel Blob on the Pro plan has no fixed limit: storage is charged at about $0.023 per GB a month. Old versions and out-of-date PDFs are cleared automatically, and a full tidy runs every Sunday night.</p>
+      {rep ? (
+        <table className="table"><tbody>
+          {rep.groups.map((g) => <tr key={g.label}><td>{g.label}</td><td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{size(g.bytes)}</td></tr>)}
+          <tr><td><b>Total</b> ({rep.files.toLocaleString("en-GB")} files)</td><td style={{ textAlign: "right", whiteSpace: "nowrap" }}><b>{size(rep.total)}</b></td></tr>
+        </tbody></table>
+      ) : null}
+      {msg ? <div className="done-msg" style={{ margin: "10px 0" }}>{msg}</div> : null}
+      <div className="actions">
+        <button className="btn btn-ghost" type="button" onClick={check} disabled={!!busy}>{busy === "Adding it up…" ? busy : rep ? "Check again" : "Check storage used"}</button>
+        <button className="btn btn-ghost" type="button" onClick={tidy} disabled={!!busy}>{busy && busy !== "Adding it up…" ? busy : "Tidy up now"}</button>
+      </div>
     </div>
   );
 }

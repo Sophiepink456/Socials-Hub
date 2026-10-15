@@ -8,7 +8,7 @@ import {
   assignPhotos, photoFits, textFields, fieldName, SECTIONS,
 } from "../../lib/proposal/data";
 
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage } from "./kit";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom } from "./kit";
 
 const DRAFT_KEY = "proposal-draft-v1";
 
@@ -52,7 +52,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
             if (!ok) { setDraftMsg(j.error || "That draft link isn't valid any more."); return; }
             setP(normalise(j.data));
             setDraft({ id: j.id, k: j.k, link: window.location.href, savedBy: j.savedBy });
-            setDraftMsg(j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
+            setDraftMsg(j.copy ? `You’re editing the saved copy “${j.name}”. Save draft updates the saved copy; to make a new one from it, use “Start from” on a new form instead.` : j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
           }).catch(() => setDraftMsg("Couldn't open that draft. Try the link again."));
         return;
       }
@@ -298,6 +298,19 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
             <button type="button" className="link" onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setSavedDraft(null); }}>start fresh</button>.
           </div>
         ) : null}
+        {!review ? (
+          <Section title="Start from one already made (optional)" open={open === "start"} onToggle={() => toggle("start")} done>
+            <p className="hint" style={{ marginTop: 0 }}>Start from a proposal or saved copy (copies everything), or from a candidate pack for the same client and role (copies the client, logo, About text, role details, salary, benefits, consultant and photos).</p>
+            <StartFrom target="proposal" onPick={(data, item) => {
+              setP(normalise(data));
+              setPage("title");
+              return item.from === "candidate"
+                ? "Copied the client, logo, About text, role details, salary, benefits, consultant and photos from the candidate pack. Now add the parts only a proposal has."
+                : `Copied “${item.name || `${item.client} – ${item.role}`}” in full. Change the details for this client and role.`;
+            }} />
+          </Section>
+        ) : null}
+
         <Section title="1. Client & role" open={open === "client"} onToggle={() => toggle("client")} done={!!(p.clientName && p.roleTitle)}>
           <Text label="Client name" path="clientName" max={LIMITS.clientName} page="title" placeholder="e.g. Westmarq" {...f} />
           <Text label="Role title" path="roleTitle" page="title" placeholder="e.g. Chief Technology Officer" {...f}

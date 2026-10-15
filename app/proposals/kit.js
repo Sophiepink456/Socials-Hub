@@ -219,3 +219,48 @@ export function LimitModal() {
     </div>
   );
 }
+
+// "Start from…" picker shared by the proposal and candidate pack forms. Lists saved copies
+// (from Settings), candidate packs and proposals; `onPick(data, item)` gets the data already
+// turned into the kind being made (`target`: "proposal" or "candidate").
+export function StartFrom({ target, onPick }) {
+  const [items, setItems] = useState(null);
+  const [msg, setMsg] = useState("");
+  const [val, setVal] = useState("");
+  useEffect(() => {
+    fetch("/api/proposals/recent", { cache: "no-store" }).then((r) => r.json()).then((j) => setItems(j.items || [])).catch(() => setItems([]));
+  }, []);
+  const day = (d) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "");
+  const label = (r) => (r.name ? `${r.name}${r.client ? ` (${r.client} – ${r.role})` : ""}` : `${r.client} – ${r.role}`) + (r.consultant || r.date ? ` · ${[r.consultant, day(r.date)].filter(Boolean).join(", ")}` : "");
+  const groups = [
+    ["Saved copies", (items || []).filter((r) => r.src === "copy")],
+    ["Candidate packs", (items || []).filter((r) => r.src === "rec" && r.kind === "candidate")],
+    ["Proposals", (items || []).filter((r) => r.src === "rec" && r.kind === "proposal")],
+  ].filter(([, list]) => list.length);
+  async function pick(v) {
+    setVal(v);
+    if (!v) return;
+    const item = (items || []).find((r) => `${r.src}:${r.id}` === v);
+    if (!item) return;
+    setMsg("Copying it in…");
+    try {
+      const r = await fetch(`/api/proposals/recent?id=${encodeURIComponent(item.id)}&src=${item.src}&for=${target}`, { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setMsg(onPick(j.data, { ...item, from: j.from }) || "Copied in. Change anything you need.");
+    } catch (e) { setMsg(e.message || "Couldn’t copy that one."); }
+  }
+  return (
+    <>
+      <select className="select" value={val} disabled={items === null} onChange={(e) => pick(e.target.value)}>
+        <option value="">{items === null ? "Loading…" : items.length ? "Choose one…" : "Nothing made yet"}</option>
+        {groups.map(([g, list]) => (
+          <optgroup key={g} label={g}>
+            {list.map((r) => <option key={`${r.src}:${r.id}`} value={`${r.src}:${r.id}`}>{label(r)}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      {msg ? <div className="hint">{msg}</div> : <div className="hint">Or skip this and fill it in from scratch.</div>}
+    </>
+  );
+}

@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDesign, slideCount, photoSlides, visibleFields } from "../../../lib/designs";
 import { randomPhoto, HEADSHOTS } from "../../../lib/photos";
 import { fileName } from "../../../lib/text";
+import { buildSocialFile, saveBlob } from "../../../lib/socialFiles";
+
+const ME_KEY = "hub-my-name";
 
 export default function Editor({ id }) {
   const design = getDesign(id);
@@ -84,54 +87,32 @@ export default function Editor({ id }) {
   }
   const focusField = (f) => { if (multi && typeof f.slide === "number") setSlide(f.slide); };
 
-  function save(blob, name) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
+  // Who's making it: every download is saved to that person's folder in Saved designs.
+  const [me, setMe] = useState("");
+  const [savedMsg, setSavedMsg] = useState("");
+  useEffect(() => { try { setMe(localStorage.getItem(ME_KEY) || ""); } catch {} }, []);
+  useEffect(() => { if (!me && values.consultant) setMe(values.consultant); }, [values.consultant]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chooseMe = (v) => { setMe(v); try { localStorage.setItem(ME_KEY, v); } catch {} };
 
-  async function downloadPng() {
-    setBusy("Preparing…");
+  async function download() {
+    if (!me.trim()) { setSavedMsg("Choose your name first, so the design is saved to your folder."); return; }
+    const urls = Array.from({ length: count }, (_, n) => urlFor(n));
+    const format = multi ? "pdf" : "png";
+    setSavedMsg("");
     try {
-      const res = await fetch(urlFor(0));
-      if (!res.ok) throw new Error("render failed");
-      save(await res.blob(), fileName(values.title || design.title, "png"));
+      const blob = await buildSocialFile(urls, { format, width: design.width, height: design.height }, setBusy);
+      saveBlob(blob, fileName(values.title || design.title, format));
     } catch {
       alert("Sorry, that didn't download. Try again in a moment.");
-    } finally {
       setBusy("");
+      return;
     }
-  }
-
-  // Carousels download as one PDF, one slide per page, ready for a LinkedIn
-  // document post. Slides are turned into high-quality JPEGs first so the
-  // file stays small enough to upload.
-  async function downloadPdf() {
+    setBusy("");
     try {
-      const { PDFDocument } = await import("pdf-lib");
-      const pdf = await PDFDocument.create();
-      for (let n = 0; n < count; n++) {
-        setBusy(`Slide ${n + 1} of ${count}…`);
-        const res = await fetch(urlFor(n));
-        if (!res.ok) throw new Error("render failed");
-        const jpg = await toJpeg(await res.blob());
-        const img = await pdf.embedJpg(jpg);
-        const page = pdf.addPage([design.width, design.height]);
-        page.drawImage(img, { x: 0, y: 0, width: design.width, height: design.height });
-      }
-      setBusy("Saving…");
-      const bytes = await pdf.save();
-      save(new Blob([bytes], { type: "application/pdf" }), fileName(values.title || design.title, "pdf"));
-    } catch {
-      alert("Sorry, that didn't download. Try again in a moment.");
-    } finally {
-      setBusy("");
-    }
+      const r = await fetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person: me, design: design.id, designTitle: design.title, title: values.title || values.jobTitle || values.name || design.title, urls, format, width: design.width, height: design.height }) });
+      setSavedMsg(r.ok ? `Saved to ${me.split(" ")[0]}’s folder in Saved designs.` : "Downloaded, but it couldn’t be saved to your folder this time.");
+    } catch { setSavedMsg("Downloaded, but it couldn’t be saved to your folder this time."); }
   }
 
   return (
@@ -144,16 +125,24 @@ export default function Editor({ id }) {
             <Field key={f.key} f={f} values={values} set={set} onFocus={() => focusField(f)} />
           ))}
 
+        <div className="row" style={{ marginTop: 18 }}>
+          <label className="label" htmlFor="me"><span>Your name</span></label>
+          <input id="me" className="input" list="me-names" value={me} placeholder="Choose or type your name" onChange={(e) => chooseMe(e.target.value)} />
+          <datalist id="me-names">{HEADSHOTS.map((h) => <option key={h.name} value={h.name} />)}</datalist>
+          <div className="hint">Each download is also saved to your folder in Saved designs.</div>
+        </div>
+
         <div className="actions">
           {design.photo ? (
             <button type="button" className="btn btn-ghost" onClick={shuffle}>
               {withPhoto.length > 1 ? (withPhoto.includes(slide) ? `Shuffle photo (slide ${slide + 1})` : "Shuffle photos") : "Shuffle photo"}
             </button>
           ) : null}
-          <button type="button" className="btn btn-primary" onClick={multi ? downloadPdf : downloadPng} disabled={!!busy}>
+          <button type="button" className="btn btn-primary" onClick={download} disabled={!!busy}>
             {busy || (multi ? "Download PDF" : "Download PNG")}
           </button>
         </div>
+        {savedMsg ? <div className="hint" style={{ marginTop: 8 }}>{savedMsg}</div> : null}
       </div>
 
       <div className="preview">
@@ -188,23 +177,6 @@ function pick(set, division, avoid) {
     if (!avoid.includes(p)) return p;
   }
   return randomPhoto(set, division);
-}
-
-function toJpeg(blob) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      const c = document.createElement("canvas");
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      c.getContext("2d").drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      c.toBlob((b) => (b ? b.arrayBuffer().then(resolve, reject) : reject(new Error("jpeg"))), "image/jpeg", 0.92);
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
 }
 
 function Field({ f, values, set, onFocus }) {

@@ -9,7 +9,7 @@ export async function GET(req) {
   const u = new URL(req.url);
   const d = await loadDraft(u.searchParams.get("id"), u.searchParams.get("k")).catch(() => null);
   if (!d) return Response.json({ error: "That draft link isn't valid any more." }, { status: 404 });
-  return Response.json({ id: d.id, k: d.key, data: d.data, savedBy: d.savedBy, submitted: !!d.submitted, updatedAt: d.updatedAt }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ id: d.id, k: d.key, data: d.data, savedBy: d.savedBy, submitted: !!d.submitted, updatedAt: d.updatedAt, copy: !!d.copy, name: d.name || "" }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req) {

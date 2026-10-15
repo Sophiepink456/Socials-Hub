@@ -10,7 +10,7 @@ import {
 } from "../../lib/candidate/data";
 import { STOCK_PHOTOS } from "../../lib/proposal/data";
 import { PACK_STYLES, packStyle, packStyleDefaults, CORE_PACK_PAGES } from "../../lib/candidate/extra";
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal } from "./kit";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal, StartFrom } from "./kit";
 
 const DRAFT_KEY = "pack-draft-v1";
 const PATH = "/proposals/candidate-pack";
@@ -78,8 +78,6 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
   const [draft, setDraft] = useState(null);
   const [draftPanel, setDraftPanel] = useState(null);
   const [draftMsg, setDraftMsg] = useState("");
-  const [recent, setRecent] = useState(null);
-  const [fromMsg, setFromMsg] = useState("");
   const [sendTo, setSendTo] = useState(record ? (record.submittedBy && record.submittedBy.email) || "" : "");
   const loaded = useRef(false);
   const pRef = useRef(p);
@@ -96,14 +94,13 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
             if (!ok) { setDraftMsg(j.error || "That draft link isn't valid any more."); return; }
             loading.current = true; setP(normalisePack(j.data));
             setDraft({ id: j.id, k: j.k, link: window.location.href, savedBy: j.savedBy });
-            setDraftMsg(j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
+            setDraftMsg(j.copy ? `You’re editing the saved copy “${j.name}”. Save draft updates the saved copy; to make a new one from it, use “Start from” on a new form instead.` : j.submitted ? "This draft has already been sent for proof-reading. Any changes here would need sending again." : `Draft opened. Last saved ${new Date(j.updatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`);
           }).catch(() => setDraftMsg("Couldn't open that draft. Try the link again."));
         return;
       }
       const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
       if (d && (d.clientName || d.roleTitle || d.about)) setSavedDraft(d);
     } catch {}
-    fetch("/api/proposals/recent", { cache: "no-store" }).then((r) => r.json()).then((j) => setRecent(j.items || [])).catch(() => setRecent([]));
   }, []);
   useEffect(() => {
     if (!loaded.current) { loaded.current = JSON.stringify(p) !== JSON.stringify(blankPack()); if (!loaded.current) return; }
@@ -162,19 +159,18 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
     setPage("contact");
   }
 
-  async function startFromProposal(id) {
-    if (!id) return;
-    setFromMsg("Copying from the proposal…");
-    try {
-      const r = await fetch(`/api/proposals/recent?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      loading.current = true; setP((cur) => normalisePack({ ...cur, ...j.data, coloursAuto: true }));
-      setFromMsg("Copied the client, logo, About text, role details, salary, benefits, consultant and photos. Now add the parts only a candidate pack has.");
-      setPage("title");
-      // The proposal didn't have the brand colours or homepage picture, so fetch those.
-      if (j.data.clientWebsite) getExtras(j.data.clientWebsite, j.data.clientLogo);
-    } catch (e) { setFromMsg(e.message || "Couldn't copy that proposal."); }
+  // "Start from…": a proposal fills what matches; a pack or saved copy is copied in full.
+  function startFrom(data, item) {
+    loading.current = true;
+    setPage("title");
+    if (item.from === "candidate") {
+      setP(normalisePack(data));
+      return `Copied “${item.name || `${item.client} – ${item.role}`}” in full. Change the details for this role.`;
+    }
+    setP((cur) => normalisePack({ ...cur, ...data, coloursAuto: true }));
+    // A proposal doesn't have the brand colours or homepage picture, so fetch those.
+    if (data.clientWebsite) getExtras(data.clientWebsite, data.clientLogo);
+    return "Copied the client, logo, About text, role details, salary, benefits, consultant and photos. Now add the parts only a candidate pack has.";
   }
 
   // Homepage picture for the laptop + brand colours.
@@ -341,15 +337,9 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         ) : null}
 
         {!review ? (
-          <Section title="1. Start from a proposal (optional)" open={open === "start"} onToggle={() => toggle("start")} done>
-            <p className="hint" style={{ marginTop: 0 }}>If there’s already a proposal for this client and role, start from it. The client, logo, About text, role details, salary, benefits, consultant and photos are copied in.</p>
-            <select className="select" defaultValue="" disabled={recent === null} onChange={(e) => startFromProposal(e.target.value)}>
-              <option value="">{recent === null ? "Loading proposals…" : recent.length ? "Choose a proposal…" : "No proposals yet"}</option>
-              {(recent || []).map((r) => (
-                <option key={r.id} value={r.id}>{r.client} – {r.role}{r.consultant ? ` (${r.consultant}` : ""}{r.date ? `${r.consultant ? ", " : " ("}${new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })})` : r.consultant ? ")" : ""}</option>
-              ))}
-            </select>
-            {fromMsg ? <div className="hint">{fromMsg}</div> : <div className="hint">Or skip this and fill it in from scratch.</div>}
+          <Section title="1. Start from one already made (optional)" open={open === "start"} onToggle={() => toggle("start")} done>
+            <p className="hint" style={{ marginTop: 0 }}>Start from a candidate pack or saved copy (copies everything), or from a proposal for the same client and role (copies the client, logo, About text, role details, salary, benefits, consultant and photos).</p>
+            <StartFrom target="candidate" onPick={startFrom} />
           </Section>
         ) : null}
 
