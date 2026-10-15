@@ -15,34 +15,48 @@ import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFr
 const DRAFT_KEY = "pack-draft-v1";
 const PATH = "/proposals/candidate-pack";
 
-// A list of short lines (points, benefits) with add and remove.
-function ListBox({ label, path, p, set, setPage, page, max, each, placeholder, hint }) {
-  const list = (getIn(p, path) || []).length ? getIn(p, path) : [""];
+// A list (points, benefits) typed into one box: each new line is a new bullet.
+// Bullets are shown in the box as you type; pasted lists with "-", "*" or "•" are tidied.
+const BULLET = "\u2022 ";
+const stripBullet = (l) => l.replace(/^\s*(?:[\u2022\u25CF\u25AA\u2013\u2014*\-]|\d+[.)])\s?/, "");
+const showLines = (lines) => lines.map((l) => BULLET + l).join("\n");
+function LinesBox({ label, path, p, set, setPage, page, max, each, placeholder, hint }) {
+  const ref = useRef(null);
+  const caret = useRef(null);
+  const list = getIn(p, path) || [];
+  const value = list.length && !(list.length === 1 && !list[0]) ? showLines(list) : "";
+  const filled = list.filter((b) => String(b).trim()).length;
+  useLayoutEffect(() => {
+    if (caret.current !== null && ref.current && document.activeElement === ref.current) {
+      ref.current.setSelectionRange(caret.current, caret.current);
+      caret.current = null;
+    }
+  });
+  function onChange(e) {
+    const raw = e.target.value;
+    const at = e.target.selectionStart;
+    let lines = raw.split("\n").map(stripBullet);
+    if (lines.length > max) {
+      limitHit(`${label} (one per line)`, max, lines.length);
+      lines = lines.slice(0, max);
+    }
+    const long = lines.findIndex((l) => l.length > each);
+    if (long >= 0) {
+      limitHit(`${placeholder} ${long + 1}`, each, lines[long].length);
+      lines = lines.map((l) => l.slice(0, each));
+    }
+    // Keep the cursor where it was once the bullets are added back.
+    const before = raw.slice(0, at).split("\n").map(stripBullet);
+    const pos = showLines(before).length;
+    caret.current = Math.min(pos, showLines(lines).length);
+    set(path, raw.trim() === "" ? [""] : lines);
+  }
   return (
     <div className="row">
-      <label className="label"><span>{label}</span><span className="count">{list.filter((b) => String(b).trim()).length}/{max}</span></label>
-      {list.map((b, i) => (
-        <div key={i} className="bullet-row">
-          {each > 80 ? (
-            <textarea className="input" rows={2} value={b} spellCheck lang="en-GB" placeholder={`${placeholder} ${i + 1}`} onFocus={() => setPage(page)}
-              onChange={(e) => {
-                let v = e.target.value.replace(/\n/g, " ");
-                if (v.length > each) { limitHit(`${placeholder} ${i + 1}`, each, v.length); v = v.slice(0, each); }
-                set(path, list.map((x, j) => (j === i ? v : x)));
-              }} />
-          ) : (
-            <input className="input" value={b} spellCheck lang="en-GB" placeholder={`${placeholder} ${i + 1}`} onFocus={() => setPage(page)}
-              onChange={(e) => {
-                let v = e.target.value;
-                if (v.length > each) { limitHit(`${placeholder} ${i + 1}`, each, v.length); v = v.slice(0, each); }
-                set(path, list.map((x, j) => (j === i ? v : x)));
-              }} />
-          )}
-          {list.length > 1 ? <button type="button" className="link" onClick={() => set(path, list.filter((_, j) => j !== i))}>Remove</button> : null}
-        </div>
-      ))}
-      {list.length < max ? <button type="button" className="btn btn-ghost btn-small" onClick={() => { set(path, [...list, ""]); setPage(page); }}>+ Add another</button> : null}
-      {hint ? <div className="hint">{hint}</div> : null}
+      <label className="label"><span>{label}</span><span className="count">{filled}/{max}</span></label>
+      <textarea ref={ref} className="input" rows={Math.min(14, Math.max(5, list.length + 1))} value={value} spellCheck lang="en-GB" onFocus={() => setPage(page)}
+        placeholder={`${BULLET}${placeholder} one\n${BULLET}Press Enter for the next one`} onChange={onChange} />
+      <div className="hint">Press Enter to start a new bullet point. Up to {max}, {each} characters each.{hint ? " " + hint : ""}</div>
     </div>
   );
 }
@@ -465,20 +479,20 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
 
         <Section title={`${review ? 6 : 7}. Key Responsibilities`} open={open === "key"} onToggle={() => toggle("key")} done={(p.keyPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="keyText" max={L.keyText} multiline rows={4} page="key" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
-          <ListBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" {...f} />
+          <LinesBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" {...f} />
         </Section>
 
         <Section title={`${review ? 7 : 8}. What We’re Looking For`} open={open === "looking"} onToggle={() => toggle("looking")} done={(p.lookingPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="lookingText" max={L.lookingText} multiline rows={4} page="looking" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
-          <ListBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" {...f} />
+          <LinesBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" {...f} />
           <Text label="Closing line under the points" path="lookingOutro" max={L.lookingOutro} multiline rows={3} page="looking" optional {...f}
             placeholder="e.g. Experience within food manufacturing would be particularly beneficial." />
         </Section>
 
         <Section title={`${review ? 8 : 9}. What’s on Offer`} open={open === "offer"} onToggle={() => toggle("offer")} done={!!(p.salary && p.why)}>
           <Text label="Salary" path="salary" max={L.salary} page="offer" placeholder="e.g. £80,000 - £90,000" {...f} />
-          <Text label="Contract" path="contract" max={L.contract} page="offer" placeholder="e.g. Permanent, full-time" {...f} />
-          <ListBox label="Benefits" path="benefits" max={L.benefits} each={L.benefit} placeholder="Benefit" page="offer" {...f} hint="Shown in two columns." />
+          <Text label="Contract" path="contract" max={L.contract} multiline rows={2} page="offer" placeholder="e.g. Permanent afternoon shift: Monday–Thursday, 2pm–Midnight" {...f} hint="Longer lines wrap underneath on the page." />
+          <LinesBox label="Benefits" path="benefits" max={L.benefits} each={L.benefit} placeholder="Benefit" page="offer" {...f} />
           <Text label="Why this role stands out" path="why" max={L.why} multiline rows={7} page="offer" {...f} />
         </Section>
 
