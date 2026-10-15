@@ -151,6 +151,21 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
   }
 
   // Homepage picture for the laptop + brand colours.
+  const [colourMsg, setColourMsg] = useState("");
+  async function pickColoursAgain() {
+    setColourMsg("Picking the brand colours…");
+    try {
+      const r = await fetch("/api/proposals/site-extras", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: p.clientWebsite, logo: p.clientLogo, coloursOnly: true }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      if (!j.colours) { setColourMsg("Couldn’t find brand colours on the logo or website. Choose them with the colour boxes."); return; }
+      setP((cur) => ({ ...cur, accent: j.colours.accent, dark: j.colours.dark, coloursAuto: true }));
+      setColourMsg(`Colours picked from the ${j.colours.source || "website"}.`);
+      setPage("about");
+    } catch (e) { setColourMsg(e.message || "Couldn’t pick the colours. Try again in a moment."); }
+  }
+
   async function getExtras(url, logo) {
     setExtrasState({ busy: true, msg: "Taking a picture of the homepage and picking the brand colours…" });
     try {
@@ -181,7 +196,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
       const placed = assignPackPhotos(r.photos || []);
       setP((cur) => ({ ...cur, sitePhotos: r.photos || [], ...placed, ...(r.logo && !cur.clientLogo ? { clientLogo: r.logo } : {}) }));
       const n = (r.photos || []).length, k = Object.keys(placed).length;
-      setSiteState({ busy: false, msg: `${n ? `Found ${n} usable photo${n === 1 ? "" : "s"} and placed ${k} of ${PACK_PHOTO_SLOTS.length}.` : "No usable photos on that site, so our own photos stay in."} ${r.logo ? `Logo found (${r.logoSource}).` : "No logo found. Please upload it below."} Swap any picture in section 9.` });
+      setSiteState({ busy: false, msg: `${n ? `Found ${n} usable photo${n === 1 ? "" : "s"} and placed ${k} of ${PACK_PHOTO_SLOTS.length}.` : "No usable photos on that site, so our own photos stay in."} ${r.logo ? `Logo found (${r.logoSource}).` : "No logo found. Please upload it below."} Swap any picture in section 10.` });
       // Colours are best taken from the logo, which may only just have been found.
       await extras;
       if (r.logo && !p.clientLogo) getExtras("", r.logo).then(() => {}).catch(() => {});
@@ -280,7 +295,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
   }
 
   const two = !!p.twoConsultants;
-  const SECTION_PAGE = { start: "title", client: "title", consultants: "contact", about: "about", role: "role", key: "key", looking: "looking", offer: "offer", pictures: "title", wording: "next", pages: "title" };
+  const SECTION_PAGE = { start: "title", client: "title", consultants: "contact", about: "about", role: "role", key: "key", looking: "looking", offer: "offer", opportunity: "opportunity", pictures: "title", wording: "next", pages: "title" };
   const toggle = (k) => { if (open !== k && SECTION_PAGE[k]) setPage(SECTION_PAGE[k]); setOpen((o) => (o === k ? "" : k)); };
   const setColour = (k, v) => setP((cur) => ({ ...cur, [k]: v, coloursAuto: false }));
 
@@ -360,9 +375,10 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
             </div>
             <div className="hint">
               {p.coloursAuto ? "Picked automatically from the client’s logo or website. " : ""}
-              <button type="button" className="link" disabled={extrasState.busy || !p.clientWebsite} onClick={() => { set("coloursAuto", true); getExtras(p.clientWebsite, p.clientLogo); }}>Pick from the website again</button>
+              <button type="button" className="link" disabled={colourMsg === "Picking the brand colours…" || !(p.clientWebsite || p.clientLogo)} onClick={pickColoursAgain}>Pick from the website again</button>
               {" · "}
               <button type="button" className="link" onClick={() => setP((c) => ({ ...c, accent: DEFAULT_ACCENT, dark: DEFAULT_DARK, coloursAuto: false }))}>Use Elevation colours</button>
+              {colourMsg ? <div style={{ marginTop: 4 }}>{colourMsg}</div> : null}
             </div>
           </div>
         </Section>
@@ -419,33 +435,40 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           </div>
         </Section>
 
-        <Section title={`${review ? 4 : 5}. The Role`} open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
+        <Section title={`${review ? 4 : 5}. The Opportunity`} open={open === "opportunity"} onToggle={() => toggle("opportunity")} done={!!p.opportunity}>
+          <Text label="The opportunity" path="opportunity" max={L.opportunity} multiline rows={10} page="opportunity" {...f}
+            hint="Why the role exists and why it’s a good move. Start a new line for a new paragraph. Leave it blank to leave this page out." />
+        </Section>
+
+        <Section title={`${review ? 5 : 6}. The Role`} open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
           <Text label="Job title" path="jobTitle" max={L.jobTitle} page="role" {...f} />
           <Text label="Location" path="location" max={L.location} page="role" placeholder="e.g. Huddersfield or Leicester" {...f} />
           <Text label="Reporting to" path="reportingTo" max={L.reportingTo} page="role" {...f} />
           {!p.noDirectReports ? <Text label="Direct reports" path="directReports" max={L.directReports} page="role" {...f} /> : null}
           <Check label="No direct reports (remove this line)" path="noDirectReports" page="role" {...f} />
-          <Text label="Role profile" path="roleProfile" max={L.roleProfile} multiline rows={10} page="role" {...f} hint="Start a new line for a new paragraph. The first paragraph is shown in bold." />
+          <Text label="Role profile" path="roleProfile" max={L.roleProfile} multiline rows={10} page="role" {...f} hint="Start a new line for a new paragraph." />
         </Section>
 
-        <Section title={`${review ? 5 : 6}. Key Responsibilities`} open={open === "key"} onToggle={() => toggle("key")} done={(p.keyPoints || []).some((x) => String(x).trim())}>
+        <Section title={`${review ? 6 : 7}. Key Responsibilities`} open={open === "key"} onToggle={() => toggle("key")} done={(p.keyPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="keyText" max={L.keyText} multiline rows={4} page="key" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
           <ListBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" {...f} />
         </Section>
 
-        <Section title={`${review ? 6 : 7}. What We’re Looking For`} open={open === "looking"} onToggle={() => toggle("looking")} done={(p.lookingPoints || []).some((x) => String(x).trim())}>
+        <Section title={`${review ? 7 : 8}. What We’re Looking For`} open={open === "looking"} onToggle={() => toggle("looking")} done={(p.lookingPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="lookingText" max={L.lookingText} multiline rows={4} page="looking" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
           <ListBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" {...f} />
+          <Text label="Closing line under the points" path="lookingOutro" max={L.lookingOutro} multiline rows={3} page="looking" optional {...f}
+            placeholder="e.g. Experience within food manufacturing would be particularly beneficial." />
         </Section>
 
-        <Section title={`${review ? 7 : 8}. What’s on Offer`} open={open === "offer"} onToggle={() => toggle("offer")} done={!!(p.salary && p.why)}>
+        <Section title={`${review ? 8 : 9}. What’s on Offer`} open={open === "offer"} onToggle={() => toggle("offer")} done={!!(p.salary && p.why)}>
           <Text label="Salary" path="salary" max={L.salary} page="offer" placeholder="e.g. £80,000 - £90,000" {...f} />
           <Text label="Contract" path="contract" max={L.contract} page="offer" placeholder="e.g. Permanent, full-time" {...f} />
           <ListBox label="Benefits" path="benefits" max={L.benefits} each={L.benefit} placeholder="Benefit" page="offer" {...f} hint="Shown in two columns." />
           <Text label="Why this role stands out" path="why" max={L.why} multiline rows={7} page="offer" {...f} />
         </Section>
 
-        <Section title={`${review ? 8 : 9}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
+        <Section title={`${review ? 9 : 10}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
           <p className="hint" style={{ marginTop: 0 }}>Photos from the client’s website come first, then ours. Faded ones are too small for that spot and would look blurry.</p>
           {PACK_PHOTO_SLOTS.map((s) => (
             <div key={s.key} className="row">
@@ -609,7 +632,7 @@ function PackWording({ p, setP, setPage }) {
   }
   return (
     <>
-      <p className="hint" style={{ marginTop: 0 }}>Each box starts with the standard wording. Change it for this pack only; clear a box to go back to the standard. Press <b>Save changes</b> to keep it.</p>
+      <p className="hint" style={{ marginTop: 0 }}>Each box starts with the standard wording. Change it for this pack only; clear a box to go back to the standard. In headings, put * around the words shown in the client’s colour, e.g. Key *Responsibilities*. Press <b>Save changes</b> to keep it.</p>
       {PACK_WORDING.filter((w) => w.fields.length).map((w) => {
         const changed = w.fields.filter(([k]) => tx[k] != null).length;
         const isOpen = openKey === w.page;
