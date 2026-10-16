@@ -15,6 +15,8 @@ export async function GET(req, { params }) {
   return new Response(f.stream, {
     headers: {
       "Content-Type": f.contentType || "application/octet-stream",
+      // A known size helps email services (Zapier/Gmail) pick the file up as an attachment.
+      ...(f.size ? { "Content-Length": String(f.size) } : {}),
       "Cache-Control": "public, max-age=31536000, immutable",
       ...(name.endsWith(".pdf") ? { "Content-Disposition": `inline; filename="${name}"` } : {}),
     },
