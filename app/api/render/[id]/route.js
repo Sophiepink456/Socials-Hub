@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { getDesign, slideCount, photoSlides, jobCount } from "../../../../lib/designs";
 import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
 import { fileName, salaryText } from "../../../../lib/text";
+import { isStockPhoto, stockSrc } from "../../../../lib/stock";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
@@ -26,7 +27,8 @@ export const dynamic = "force-dynamic";
 // Each renderer gets the form values, the slide number and the resolved
 // asset addresses, and returns the JSX for that one slide.
 const RENDERERS = {
-  "job-ad": (v, { photo }) => renderJobAd(v, { photo }),
+  // Our job ad photos have the branding baked in; a stock photo gets it laid on top.
+  "job-ad": (v, a) => renderJobAd(v, { photo: a.photo, overlay: a.stock ? a.asset("job-cover/overlay.png") : "" }),
 
   "job-ideal": (v, a) =>
     a.slide === 0
@@ -117,13 +119,15 @@ export async function GET(req, { params }) {
   const count = slideCount(design, values);
   const slide = Math.max(0, Math.min(count - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
 
-  // Only our own photo files can be used — never an outside address.
+  // Only our own photo files, or a Pexels stock photo, can be used — never any other address.
   let photo = "";
+  let stock = false;
   if (photoSlides(design, values).includes(slide)) {
     const set = design.photoSet || design.id;
     const asked = searchParams.get("photo") || "";
     let path;
-    if (asked.startsWith("/designs/") && !asked.includes("..")) path = asked;
+    if (design.stock && isStockPhoto(asked)) { stock = true; path = stockSrc(asked); }
+    else if (asked.startsWith("/designs/") && !asked.includes("..")) path = asked;
     // The home-screen preview always uses the first photo, so the card is steady.
     else if (isSample) {
       const pool = photoPool(set, values.division);
@@ -133,12 +137,12 @@ export async function GET(req, { params }) {
         : pool[(slide * 11) % pool.length];
     }
     else path = randomPhoto(set, values.division);
-    photo = path ? origin + path : "";
+    photo = !path ? "" : stock ? path : origin + path;
   }
 
   const fonts = await loadFonts();
 
-  const jsx = render(values, { photo, slide, origin, asset: (p) => `${origin}/designs/${p}` });
+  const jsx = render(values, { photo, stock, slide, origin, asset: (p) => `${origin}/designs/${p}` });
   const base = fileName(values.title || design.title, "png").replace(/\.png$/, "");
 
   return new ImageResponse(jsx, {

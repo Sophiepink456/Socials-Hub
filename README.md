@@ -30,3 +30,12 @@ Everything visual lives in `public/designs/<design>/`. Replace the files in GitH
 
 - The image renderer (`app/api/render/[id]/route.js`) runs on Vercel's Node.js runtime, not edge. The four Area fonts are too big for the 1 MB edge limit, which made two deploys fail on 6 Oct 2026. Don't switch it back to `runtime = "edge"`.
 
+
+## Stock photo search
+
+The LinkedIn Job Ad, Job Ad + Ideal Candidate, Job Ad Carousel, both Candidate Ads, 5 Reasons and Multi Vacancy Carousel have a "Search stock photos" box in the editor. Consultants type a keyword and click a photo to put it on the open slide (only slides that have a photo). Shuffle goes back to our own photos.
+
+- Photos come from [Pexels](https://www.pexels.com/api/): free for commercial use, no credit needed on the post.
+- Needs **`PEXELS_API_KEY`** in Vercel's environment variables (free key from pexels.com/api). Without it the search box says it isn't set up yet.
+- Turn it on or off per design with `stock: true` in `lib/designs.js`.
+- On the LinkedIn Job Ad, our photos have the branding baked in, so a stock photo gets `job-cover/overlay.png` plus the info icon, "recruitment group" and web address drawn on top (`lib/render/job-ad.js`).

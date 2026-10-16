@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDesign, slideCount, photoSlides, visibleFields } from "../../../lib/designs";
 import { randomPhoto, HEADSHOTS } from "../../../lib/photos";
 import { fileName } from "../../../lib/text";
+import { isStockPhoto } from "../../../lib/stock";
 
 export default function Editor({ id }) {
   const design = getDesign(id);
@@ -34,6 +35,8 @@ export default function Editor({ id }) {
       const used = [];
       for (const n of photoKey.split(",").map(Number)) {
         let p = cur[n];
+        // A stock photo someone picked stays put whatever the division.
+        if (p && isStockPhoto(p)) { next[n] = p; used.push(p); continue; }
         const fresh = pick(set_, values.division, used);
         if (!p || folder(p) !== folder(fresh)) p = fresh;
         next[n] = p;
@@ -81,6 +84,13 @@ export default function Editor({ id }) {
       }
       return next;
     });
+  }
+  // Put a stock photo on the open slide, or the first photo slide if the open one has none.
+  function useStock(src) {
+    const target = withPhoto.includes(slide) ? slide : withPhoto[0];
+    if (target == null) return;
+    setSlide(target);
+    setPhotos((cur) => ({ ...cur, [target]: src }));
   }
   const focusField = (f) => { if (multi && typeof f.slide === "number") setSlide(f.slide); };
 
@@ -143,6 +153,11 @@ export default function Editor({ id }) {
           ) : (
             <Field key={f.key} f={f} values={values} set={set} onFocus={() => focusField(f)} />
           ))}
+
+        {design.stock && withPhoto.length ? (
+          <StockSearch onPick={useStock} current={photos[withPhoto.includes(slide) ? slide : withPhoto[0]]}
+            target={multi ? (withPhoto.includes(slide) ? slide : withPhoto[0]) + 1 : null} />
+        ) : null}
 
         <div className="actions">
           {design.photo ? (
@@ -247,6 +262,73 @@ function Field({ f, values, set, onFocus }) {
             onChange={(e) => set(f.toggle.key, e.target.checked ? "1" : "")} />
           {f.toggle.label}
         </label>
+      ) : null}
+    </div>
+  );
+}
+
+// Keyword search of Pexels stock photos. Clicking one puts it on the open
+// photo slide; Shuffle goes back to our own photos.
+function StockSearch({ onPick, current, target }) {
+  const [q, setQ] = useState("");
+  const [asked, setAsked] = useState("");
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState([]);
+  const [more, setMore] = useState(false);
+  const [state, setState] = useState(""); // "", "loading", or an error message
+
+  async function run(e, nextPage = 1) {
+    if (e) e.preventDefault();
+    const term = nextPage === 1 ? q.trim() : asked;
+    if (!term) return;
+    setState("loading");
+    try {
+      const r = await fetch(`/api/stock?${new URLSearchParams({ q: term, page: String(nextPage) })}`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Search didn't work.");
+      setAsked(term);
+      setPage(nextPage);
+      setItems((cur) => (nextPage === 1 ? j.photos : [...cur, ...j.photos]));
+      setMore(j.more);
+      setState(j.photos.length || nextPage > 1 ? "" : `No photos found for “${term}”. Try another word.`);
+    } catch (err) {
+      setState(err.message || "Search didn't work.");
+    }
+  }
+
+  return (
+    <div className="row stock">
+      <label className="label" htmlFor="stock-q">
+        <span>Search stock photos <span className="opt">(optional)</span></span>
+      </label>
+      <form className="stock-bar" onSubmit={run}>
+        <input id="stock-q" className="input" value={q} placeholder="e.g. warehouse, engineer, office"
+          onChange={(e) => setQ(e.target.value)} />
+        <button type="submit" className="btn btn-ghost btn-small" disabled={state === "loading" || !q.trim()}>Search</button>
+      </form>
+      <div className="hint">
+        {target ? `Click a photo to use it on slide ${target}. ` : "Click a photo to use it. "}
+        Only slides with a photo change. Shuffle goes back to our photos.
+      </div>
+      {state && state !== "loading" ? <div className="hint warn">{state}</div> : null}
+      {items.length ? (
+        <div className="stock-grid">
+          {items.map((p) => (
+            <button key={p.id} type="button" className={"stock-pic" + (current === p.src ? " on" : "")}
+              title={p.alt || `Photo by ${p.by}`} onClick={() => onPick(p.src)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.thumb} alt={p.alt || ""} loading="lazy" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {more ? (
+        <button type="button" className="btn btn-ghost btn-small stock-more" disabled={state === "loading"}
+          onClick={() => run(null, page + 1)}>More photos</button>
+      ) : null}
+      {state === "loading" ? <div className="hint">Searching…</div> : null}
+      {items.length ? (
+        <div className="hint stock-credit">Photos from <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Pexels</a></div>
       ) : null}
     </div>
   );
