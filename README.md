@@ -39,3 +39,13 @@ The LinkedIn Job Ad, Job Ad + Ideal Candidate, Job Ad Carousel, both Candidate A
 - Needs **`PIXABAY_API_KEY`** in Vercel's environment variables (free key: sign in at pixabay.com, then open pixabay.com/api/docs/ and it's shown on the page). Without it the search box says it isn't set up yet.
 - Turn it on or off per design with `stock: true` in `lib/designs.js`.
 - On the LinkedIn Job Ad, our photos have the branding baked in, so a stock photo gets `job-cover/overlay.png` plus the info icon, "recruitment group" and web address drawn on top (`lib/render/job-ad.js`).
+
+## Letterheaded Documents
+
+`/letterhead`: upload a Word document (.docx), PDF or text file and download it laid out on the Elevation letterhead (Figma file "Partnership Proposal").
+
+- **Word and text files** are read directly (`lib/server/letterhead.js`): headings, bold-only lines (treated as sub-headings), bullet and numbered lists, tables, italic small print, pictures and "Name: ____" signing lines.
+- **PDFs** are read by Claude (needs `ANTHROPIC_API_KEY`), which returns the same structure with the wording unchanged. Claude also suggests the cover title and "Prepared for / by" for Word files when the key is set.
+- **Design:** `app/letterhead/letterhead.css` (sizes in pt, straight from the Figma A4 frames) and `lib/letterhead/Sheets.js`. Artwork in `public/letterhead/`: `cover.jpg` (cover background), `cover-lockup.svg` ("Powered by elevation"), `footer.png` (the dark footer bar on every body page), `tile.jpg` (home-screen card).
+- **PDF:** `app/api/letterhead/pdf/route.js` prints the cover and the body separately with headless Chrome and joins them, so the cover has no footer. Tables repeat their header row when they run onto a new page, and "Total" rows get the dark bar.
+- Old `.doc`, `.rtf` and `.odt` files aren't read: save them as .docx or PDF first.

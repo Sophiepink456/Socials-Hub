@@ -15,6 +15,14 @@ const TOOLS = [
     preview: [PROPOSAL_PAGES[0], PACK_PAGES[0]],
   },
   {
+    id: "letterhead",
+    title: "Letterheaded Documents",
+    blurb: "Upload a Word doc or PDF and get it back on the Elevation letterhead.",
+    href: "/letterhead",
+    cta: "Upload a document",
+    image: "/letterhead/tile.jpg",
+  },
+  {
     id: "request",
     title: "Marketing Request Form",
     blurb: "Ask the marketing team for something new.",

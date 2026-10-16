@@ -4,13 +4,13 @@ import { GATE_COOKIE, verifyGateToken } from "./lib/gate";
 
 // Open without signing in:
 // - the sign-in page itself, and Next.js's own files
-// - static design files (fonts, template images, headshots) the PDF and image makers load
+// - static design files (fonts, template images, letterhead artwork, headshots) the PDF and image makers load
 // - /api/files/…: stored PDFs and pictures, fetched by email attachments and the PDF maker
 //   (each needs its exact, unguessable address)
-// - /proposals/print: the page the PDF maker prints (it only shows data handed to it directly)
+// - /proposals/print and /letterhead/print: the pages the PDF maker prints (they only show data handed to them directly)
 // - the weekly storage tidy, which has its own check
 const OPEN = [/^\/login$/, /^\/api\/login$/, /^\/_next\//, /^\/favicon/, /^\/proposal\//, /^\/designs\//, /^\/headshots\//, /^\/elevation-logo\.png$/,
-  /^\/api\/files\//, /^\/proposals\/print$/, /^\/api\/cron\//];
+  /^\/api\/files\//, /^\/proposals\/print$/, /^\/letterhead\/print$/, /^\/letterhead\/[\w.-]+\.(jpg|png|svg)$/, /^\/api\/cron\//];
 
 export async function middleware(req) {
   const { pathname, search } = req.nextUrl;
