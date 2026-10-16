@@ -8,7 +8,7 @@ import {
   assignPhotos, photoFits, textFields, fieldName, SECTIONS,
 } from "../../lib/proposal/data";
 
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom } from "./kit";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom, LinesBox } from "./kit";
 
 const DRAFT_KEY = "proposal-draft-v1";
 
@@ -402,24 +402,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <Check label="No direct reports (remove this line)" path="noDirectReports" page="role" {...f} />
           <Text label="Salary" path="salary" max={LIMITS.salary} page="role" placeholder="e.g. £90,000–£110,000" {...f} />
           <Text label="Contract" path="contract" max={LIMITS.contract} page="role" placeholder="e.g. Permanent, full-time" {...f} />
-          <div className="row">
-            <label className="label"><span>Benefits</span><span className="count">{benefits.filter((b) => b.trim()).length}/{LIMITS.benefits}</span></label>
-            {benefits.map((b, i) => (
-              <div key={i} className="bullet-row">
-                <input className="input" value={b} spellCheck lang="en-GB" placeholder={`Benefit ${i + 1}`}
-                  onFocus={() => setPage("role")}
-                  onChange={(e) => {
-                    let v = e.target.value;
-                    if (v.length > LIMITS.benefit) { limitHit(`Benefit ${i + 1}`, LIMITS.benefit, v.length); v = v.slice(0, LIMITS.benefit); }
-                    set("benefits", benefits.map((x, j) => (j === i ? v : x)));
-                  }} />
-                {benefits.length > 1 ? <button type="button" className="link" onClick={() => set("benefits", benefits.filter((_, j) => j !== i))}>Remove</button> : null}
-              </div>
-            ))}
-            {benefits.length < LIMITS.benefits ? (
-              <button type="button" className="btn btn-ghost btn-small" onClick={() => { set("benefits", [...benefits, ""]); setPage("role"); }}>+ Add a benefit</button>
-            ) : null}
-          </div>
+          <LinesBox label="Benefits" path="benefits" max={LIMITS.benefits} each={LIMITS.benefit} placeholder="Benefit" page="role" {...f} hint={benefits.filter((b) => String(b).trim()).length > 4 ? "Shown in two columns." : ""} />
           <Text label="Role profile" path="roleProfile" max={LIMITS.roleProfile} multiline rows={12} page="role" {...f} hint="Leave a blank line between paragraphs." />
         </Section>
 

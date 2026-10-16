@@ -10,56 +10,10 @@ import {
 } from "../../lib/candidate/data";
 import { STOCK_PHOTOS } from "../../lib/proposal/data";
 import { PACK_STYLES, packStyle, packStyleDefaults, CORE_PACK_PAGES } from "../../lib/candidate/extra";
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal, StartFrom } from "./kit";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal, StartFrom, LinesBox } from "./kit";
 
 const DRAFT_KEY = "pack-draft-v1";
 const PATH = "/proposals/candidate-pack";
-
-// A list (points, benefits) typed into one box: each new line is a new bullet.
-// Bullets are shown in the box as you type; pasted lists with "-", "*" or "•" are tidied.
-const BULLET = "\u2022 ";
-const stripBullet = (l) => l.replace(/^\s*(?:[\u2022\u25CF\u25AA\u2013\u2014*\-]|\d+[.)])\s?/, "");
-const showLines = (lines) => lines.map((l) => BULLET + l).join("\n");
-function LinesBox({ label, path, p, set, setPage, page, max, each, placeholder, hint }) {
-  const ref = useRef(null);
-  const caret = useRef(null);
-  const list = getIn(p, path) || [];
-  const value = list.length && !(list.length === 1 && !list[0]) ? showLines(list) : "";
-  const filled = list.filter((b) => String(b).trim()).length;
-  useLayoutEffect(() => {
-    if (caret.current !== null && ref.current && document.activeElement === ref.current) {
-      ref.current.setSelectionRange(caret.current, caret.current);
-      caret.current = null;
-    }
-  });
-  function onChange(e) {
-    const raw = e.target.value;
-    const at = e.target.selectionStart;
-    let lines = raw.split("\n").map(stripBullet);
-    if (lines.length > max) {
-      limitHit(`${label} (one per line)`, max, lines.length);
-      lines = lines.slice(0, max);
-    }
-    const long = lines.findIndex((l) => l.length > each);
-    if (long >= 0) {
-      limitHit(`${placeholder} ${long + 1}`, each, lines[long].length);
-      lines = lines.map((l) => l.slice(0, each));
-    }
-    // Keep the cursor where it was once the bullets are added back.
-    const before = raw.slice(0, at).split("\n").map(stripBullet);
-    const pos = showLines(before).length;
-    caret.current = Math.min(pos, showLines(lines).length);
-    set(path, raw.trim() === "" ? [""] : lines);
-  }
-  return (
-    <div className="row">
-      <label className="label"><span>{label}</span><span className="count">{filled}/{max}</span></label>
-      <textarea ref={ref} className="input" rows={Math.min(14, Math.max(5, list.length + 1))} value={value} spellCheck lang="en-GB" onFocus={() => setPage(page)}
-        placeholder={`${BULLET}${placeholder} one\n${BULLET}Press Enter for the next one`} onChange={onChange} />
-      <div className="hint">Press Enter to start a new bullet point. Up to {max}, {each} characters each.{hint ? " " + hint : ""}</div>
-    </div>
-  );
-}
 
 export default function CandidateEditor({ mode = "new", record = null, onRecord }) {
   const review = mode === "review";
