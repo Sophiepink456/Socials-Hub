@@ -35,7 +35,7 @@ Everything visual lives in `public/designs/<design>/`. Replace the files in GitH
 
 The LinkedIn Job Ad, Job Ad + Ideal Candidate, Job Ad Carousel, both Candidate Ads, 5 Reasons and Multi Vacancy Carousel have a "Search stock photos" box in the editor. Consultants type a keyword and click a photo to put it on the open slide (only slides that have a photo). Shuffle goes back to our own photos.
 
-- Photos come from [Pixabay](https://pixabay.com/api/docs/): free for commercial use, no credit needed on the post. Searches are cached for 12 hours (Pixabay's photo links expire after about 24).
+- Photos come from [Pixabay](https://pixabay.com/api/docs/): free for commercial use, no credit needed on the post. Search thumbnails load from Pixabay's public preview links. When a photo is picked, the hub downloads it, crops it to 1080 × 1350 and stores it as `assets/stock-pixabay-<id>.jpg` (Pixabay doesn't allow its full-size links to be used directly, and they expire). The monthly tidy clears copies nothing uses.
 - Needs **`PIXABAY_API_KEY`** in Vercel's environment variables (free key: sign in at pixabay.com, then open pixabay.com/api/docs/ and it's shown on the page). Without it the search box says it isn't set up yet.
 - Turn it on or off per design with `stock: true` in `lib/designs.js`.
 - On the LinkedIn Job Ad, our photos have the branding baked in, so a stock photo gets `job-cover/overlay.png` plus the info icon, "recruitment group" and web address drawn on top (`lib/render/job-ad.js`).

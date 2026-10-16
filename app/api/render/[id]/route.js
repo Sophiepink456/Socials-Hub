@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { getDesign, slideCount, photoSlides, jobCount } from "../../../../lib/designs";
 import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
 import { fileName, salaryText } from "../../../../lib/text";
-import { isStockPhoto, stockSrc } from "../../../../lib/stock";
+import { isStockPhoto } from "../../../../lib/stock";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
 import { CandidateCover, AboutCandidate } from "../../../../lib/render/candidate";
@@ -126,7 +126,7 @@ export async function GET(req, { params }) {
     const set = design.photoSet || design.id;
     const asked = searchParams.get("photo") || "";
     let path;
-    if (design.stock && isStockPhoto(asked)) { stock = true; path = stockSrc(asked); }
+    if (design.stock && isStockPhoto(asked)) { stock = true; path = asked; }
     else if (asked.startsWith("/designs/") && !asked.includes("..")) path = asked;
     // The home-screen preview always uses the first photo, so the card is steady.
     else if (isSample) {
@@ -137,7 +137,7 @@ export async function GET(req, { params }) {
         : pool[(slide * 11) % pool.length];
     }
     else path = randomPhoto(set, values.division);
-    photo = !path ? "" : stock ? path : origin + path;
+    photo = path ? origin + path : "";
   }
 
   const fonts = await loadFonts();

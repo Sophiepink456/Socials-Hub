@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getDesign, slideCount, photoSlides, visibleFields } from "../../../lib/designs";
 import { randomPhoto, HEADSHOTS } from "../../../lib/photos";
 import { fileName } from "../../../lib/text";
-import { isStockPhoto } from "../../../lib/stock";
+import { isStockPhoto, stockPath } from "../../../lib/stock";
 
 export default function Editor({ id }) {
   const design = getDesign(id);
@@ -276,6 +276,23 @@ function StockSearch({ onPick, current, target }) {
   const [items, setItems] = useState([]);
   const [more, setMore] = useState(false);
   const [state, setState] = useState(""); // "", "loading", or an error message
+  const [adding, setAdding] = useState(null); // id of the photo being fetched
+
+  // The server downloads and crops the photo, then it goes on the slide.
+  async function pick(p) {
+    setAdding(p.id);
+    try {
+      const r = await fetch("/api/stock/pick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id }) });
+      const j = await r.json();
+      if (!r.ok || !j.url) throw new Error(j.error || "That photo couldn't be loaded. Try another.");
+      onPick(j.url);
+      setState("");
+    } catch (err) {
+      setState(err.message || "That photo couldn't be loaded. Try another.");
+    } finally {
+      setAdding(null);
+    }
+  }
 
   async function run(e, nextPage = 1) {
     if (e) e.preventDefault();
@@ -314,10 +331,12 @@ function StockSearch({ onPick, current, target }) {
       {items.length ? (
         <div className="stock-grid">
           {items.map((p) => (
-            <button key={p.id} type="button" className={"stock-pic" + (current === p.src ? " on" : "")}
-              title={p.alt || `Photo by ${p.by}`} onClick={() => onPick(p.src)}>
+            <button key={p.id} type="button" className={"stock-pic" + (current === `/api/files/${stockPath(p.id)}` ? " on" : "")}
+              title={p.alt || `Photo by ${p.by}`} disabled={!!adding} onClick={() => pick(p)}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.thumb} alt={p.alt || ""} loading="lazy" />
+              <img src={p.thumb} alt={p.alt || ""} loading="lazy"
+                onError={(e) => { if (e.currentTarget.src !== p.small) e.currentTarget.src = p.small; }} />
+              {adding === p.id ? <span className="stock-wait">Adding…</span> : null}
             </button>
           ))}
         </div>

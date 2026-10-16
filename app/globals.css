@@ -324,3 +324,6 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .stock-more { margin-top: 10px; }
 .stock-credit a { color: var(--green-dark); }
 @media (max-width: 480px) { .stock-grid { grid-template-columns: repeat(3, 1fr); } }
+.stock-pic { position: relative; }
+.stock-pic:disabled { cursor: progress; }
+.stock-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.75); font-size: 13px; font-weight: 600; }
