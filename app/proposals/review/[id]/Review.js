@@ -28,6 +28,11 @@ export default function Review({ id, k }) {
           Submitted by {rec.submittedBy && rec.submittedBy.name || "a consultant"}
           {rec.pdf ? <> · <a href={rec.pdf} target="_blank" rel="noreferrer">Latest PDF</a></> : null}
         </span>
+        {rec.status === "approved" ? (
+          <div className="done-msg" style={{ marginTop: 10 }}>
+            <b>Approved by the final checker.</b> Last step: check the consultant’s email at the bottom of the form and press <b>Send to consultant</b>.
+          </div>
+        ) : null}
         {(rec.comments || []).map((c, i) => (
           <div key={i} className="comment">
             <div className="meta">{c.by} · {new Date(c.at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}{c.approve ? " · Approved" : " · Changes requested"}</div>

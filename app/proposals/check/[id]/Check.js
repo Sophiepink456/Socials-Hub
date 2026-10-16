@@ -34,7 +34,7 @@ export default function Check({ id, c }) {
       if (!r.ok) throw new Error(j.error);
       setRec(j);
       setText("");
-      setDone(approve ? "Approved. The finished PDF has been emailed to the consultant, with the proof-readers copied in." : "Thanks. Your comments have been sent to the proof-reader.");
+      setDone(approve ? "Approved. The proof-reader has been told and will send it to the consultant." : "Thanks. Your comments have been sent to the proof-reader.");
     } catch (e) {
       alert(e.message || "Something went wrong.");
     } finally {
