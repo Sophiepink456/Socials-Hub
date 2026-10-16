@@ -119,7 +119,7 @@ export async function GET(req, { params }) {
   const count = slideCount(design, values);
   const slide = Math.max(0, Math.min(count - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
 
-  // Only our own photo files, or a Pexels stock photo, can be used — never any other address.
+  // Only our own photo files, or a Pixabay stock photo, can be used — never any other address.
   let photo = "";
   let stock = false;
   if (photoSlides(design, values).includes(slide)) {

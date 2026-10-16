@@ -267,7 +267,7 @@ function Field({ f, values, set, onFocus }) {
   );
 }
 
-// Keyword search of Pexels stock photos. Clicking one puts it on the open
+// Keyword search of Pixabay stock photos. Clicking one puts it on the open
 // photo slide; Shuffle goes back to our own photos.
 function StockSearch({ onPick, current, target }) {
   const [q, setQ] = useState("");
@@ -328,7 +328,7 @@ function StockSearch({ onPick, current, target }) {
       ) : null}
       {state === "loading" ? <div className="hint">Searching…</div> : null}
       {items.length ? (
-        <div className="hint stock-credit">Photos from <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Pexels</a></div>
+        <div className="hint stock-credit">Photos from <a href="https://pixabay.com" target="_blank" rel="noreferrer">Pixabay</a></div>
       ) : null}
     </div>
   );
