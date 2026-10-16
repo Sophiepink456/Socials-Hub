@@ -89,7 +89,7 @@ export default function Home() {
     <main className="wrap">
       <div className="home-head">
         <div>
-          <h1 className="h1">Marketing Hub<span className="g">.</span></h1>
+          <h1 className="h1">Powered by Elevation<span className="g">.</span></h1>
           <p className="lede">Everything you need from marketing in one place.</p>
         </div>
         <a href="/saved" className="btn btn-ghost folder-btn">

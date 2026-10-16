@@ -2,11 +2,13 @@
    Measurements in pt straight from the Figma frames (595 x 842 = A4). */
 .lh-cover, .lh-body {
   --lh-ink: #2d312e;
+  --lh-head: #2d3136;
+  --lh-text: #161616;
   --lh-muted: #525854;
   --lh-green: #bae400;
   --lh-line: #e0e0e0;
   --lh-dark: #212121;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Google Sans Flex", "Inter", system-ui, sans-serif;
   color: var(--lh-ink);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -21,10 +23,12 @@
 }
 .lh-lockup { width: 295pt; height: 96pt; display: block; }
 .lh-cover-title {
-  font-family: "Google Sans Flex", "Inter", sans-serif; font-weight: 700; font-size: 20pt; line-height: 1.5;
-  width: 100%; padding-bottom: 25pt; border-bottom: 2pt solid var(--lh-green);
+  font-family: "Google Sans Flex", "Inter", sans-serif; font-weight: 700; font-size: 20pt; line-height: 1.5; color: var(--lh-ink);
+  width: 100%; padding-bottom: 22pt; border-bottom: 2pt solid var(--lh-green);
 }
-.lh-cover-people { width: 100%; display: flex; flex-direction: column; gap: 10pt; font-size: 10.5pt; line-height: 1.5; color: var(--lh-muted); padding-bottom: 25pt; }
+.lh-cover-title .t1 { font-size: 30pt; }
+.lh-cover-title .t2 { font-size: 20pt; }
+.lh-cover-people { width: 100%; display: flex; flex-direction: column; gap: 10pt; font-size: 9pt; line-height: 1.5; color: var(--lh-muted); padding-bottom: 25pt; }
 .lh-cover-people p { margin: 0; }
 .lh-cover-people .b { font-weight: 700; }
 .lh-cover-people.lh-rule { border-bottom: 1px solid rgba(45, 49, 46, 0.2); }
@@ -33,35 +37,35 @@
   border: 1px solid var(--lh-green); border-radius: 5pt; padding: 4pt 8pt; white-space: nowrap;
 }
 
-/* ---- Body ---- */
-.lh-body { font-size: 10.5pt; line-height: 1.5; }
+/* ---- Body ---- (Figma: Google Sans Flex; headings #2d3136 with a 2pt green rule; body 9pt) */
+.lh-body { font-size: 9pt; line-height: 1.5; color: var(--lh-text); }
 .lh-body a { color: inherit; }
-.lh-h1 { font-size: 22pt; font-weight: 800; line-height: normal; margin: 30pt 0 16pt; break-after: avoid; page-break-after: avoid; }
-.lh-h2 { font-size: 13pt; font-weight: 700; line-height: normal; color: var(--lh-green); margin: 28pt 0 10pt; break-after: avoid; page-break-after: avoid; }
-.lh-h3 { font-size: 12pt; font-weight: 700; line-height: normal; margin: 22pt 0 10pt; break-after: avoid; page-break-after: avoid; }
-.lh-h1 + .lh-h2, .lh-h1 + .lh-h3, .lh-h2 + .lh-h3 { margin-top: 4pt; }
-.lh-p { margin: 0 0 16pt; }
-.lh-note { margin: 0 0 14pt; font-style: italic; font-size: 9pt; line-height: 1.4; color: #757575; }
+.lh-h1, .lh-h2 {
+  font-weight: 700; line-height: 1.3; color: var(--lh-head); padding-bottom: 8pt; border-bottom: 2pt solid var(--lh-green);
+  break-after: avoid; page-break-after: avoid;
+}
+.lh-h1 { font-size: 18pt; margin: 26pt 0 10pt; }
+.lh-h2 { font-size: 15pt; margin: 18pt 0 10pt; }
+.lh-h3 { font-size: 13pt; font-weight: 700; line-height: 1.3; color: var(--lh-text); margin: 16pt 0 4pt; break-after: avoid; page-break-after: avoid; }
+.lh-h1 + .lh-h2, .lh-h1 + .lh-h3, .lh-h2 + .lh-h3 { margin-top: 6pt; }
+.lh-p { margin: 0 0 7pt; }
+.lh-note { margin: 0 0 8pt; font-style: italic; font-size: 8pt; line-height: 1.4; color: #757575; }
 .lh-body .first { margin-top: 0; }
 .lh-body .break { break-before: page; page-break-before: always; margin-top: 0; }
 
-.lh-list { display: flex; flex-direction: column; gap: 8pt; padding-left: 12pt; margin: 0 0 16pt; line-height: 1.4; }
+.lh-list { display: flex; flex-direction: column; gap: 4.5pt; padding-left: 0; margin: 0 0 12pt; line-height: 1.4; }
 .lh-li { display: flex; gap: 8pt; align-items: flex-start; break-inside: avoid; }
-.lh-mark { color: var(--lh-green); font-weight: 700; line-height: 1.4; flex: none; }
-.lh-list.ol .lh-mark { min-width: 12pt; }
+.lh-mark { flex: none; width: 4pt; height: 4pt; border-radius: 50%; background: var(--lh-green); margin-top: 4.6pt; }
+.lh-mark.num { width: auto; height: auto; min-width: 12pt; border-radius: 0; background: none; margin-top: 0; color: var(--lh-text); font-weight: 700; }
 .lh-li-text { flex: 1; min-width: 0; }
 
-.lh-table {
-  width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 20pt;
-  border: 1px solid var(--lh-line); border-radius: 4pt; overflow: hidden; line-height: normal;
-}
-.lh-table th, .lh-table td { padding: 8pt 12pt; text-align: left; vertical-align: top; }
+.lh-table { width: 100%; border-collapse: collapse; margin: 6pt 0 16pt; border: 1px solid #cccccc; line-height: 1.4; }
+.lh-table th, .lh-table td { padding: 4pt 8pt; text-align: left; vertical-align: top; border: 1px solid #cccccc; }
 .lh-table th.r, .lh-table td.r { text-align: right; }
-.lh-table th { background: var(--lh-green); font-size: 11pt; font-weight: 700; color: var(--lh-ink); }
-.lh-table td { font-size: 10pt; border-bottom: 1px solid var(--lh-line); }
-.lh-table tbody tr:last-child td { border-bottom: 0; }
+.lh-table th { background: #212121; font-size: 10pt; font-weight: 700; color: var(--lh-green); }
+.lh-table td { font-size: 9pt; color: var(--lh-text); background: #fff; }
 .lh-table tr { break-inside: avoid; page-break-inside: avoid; }
-.lh-table tr.total td { background: var(--lh-dark); color: #fff; font-weight: 700; font-size: 11pt; padding-top: 10pt; padding-bottom: 10pt; border-bottom: 0; }
+.lh-table tr.total td { background: #efefef; color: var(--lh-text); font-weight: 700; font-size: 10pt; }
 
 .lh-sign { display: flex; align-items: flex-end; gap: 12pt; height: 28pt; margin: 0 0 12pt; font-size: 11pt; line-height: normal; break-inside: avoid; }
 .lh-sign span { width: 70pt; flex: none; }
@@ -89,7 +93,7 @@
 .lh-line { margin-bottom: 6px; }
 .lh-preview { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .lh-scaled { width: 100%; max-width: 640px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.12); background: #fff; }
-.lh-sheet { position: relative; width: 595pt; min-height: 842pt; box-sizing: border-box; padding: 64pt 56pt 112pt; background: #fff; }
+.lh-sheet { position: relative; width: 595pt; min-height: 842pt; box-sizing: border-box; padding: 48pt 48pt 112pt; background: #fff; }
 .lh-sheet-footer { position: absolute; left: 0; bottom: 0; width: 595pt; height: 48pt; display: block; }
 .lh-edit { position: relative; }
 .lh-edit .lh-x {
@@ -101,3 +105,9 @@
 .lh-edit .lh-x:hover { color: #c0392b; border-color: #c0392b; }
 .lh-pagebreak { margin-top: 30pt; padding-top: 30pt; border-top: 1px dashed #c9cdca; }
 .lh-pagebreak::before { content: "New page"; position: absolute; top: -8pt; left: 50%; transform: translateX(-50%); background: #fff; padding: 0 8pt; font-size: 8pt; color: #9aa09c; }
+
+/* Text you can type into on the preview. */
+.lh-editable { outline: none; border-radius: 2pt; cursor: text; }
+.lh-editable:hover { box-shadow: 0 0 0 2pt rgba(186, 228, 0, 0.35); }
+.lh-editable:focus { box-shadow: 0 0 0 2pt #bae400; background: rgba(186, 228, 0, 0.06); }
+.lh-h1.lh-editable:focus, .lh-h2.lh-editable:focus, .lh-cover-title.lh-editable:focus { box-shadow: 0 0 0 2pt #bae400; }

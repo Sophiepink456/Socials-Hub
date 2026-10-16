@@ -32,7 +32,7 @@ async function printPart(browser, origin, doc, part) {
     return await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: { top: pt(64), right: pt(56), bottom: pt(92), left: pt(56) },
+      margin: { top: pt(48), right: pt(48), bottom: pt(92), left: pt(48) },
       displayHeaderFooter: true,
       headerTemplate: "<span></span>",
       footerTemplate: `<style>html,body{margin:0!important;padding:0!important}#footer{padding:0!important}</style><div style="width:100%;height:${pt(92)};margin:0;padding:0;position:relative;-webkit-print-color-adjust:exact;">

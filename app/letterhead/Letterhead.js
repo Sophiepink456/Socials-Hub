@@ -57,6 +57,9 @@ export default function Letterhead() {
   const setCover = (k, v) => setDoc((d) => ({ ...d, cover: { ...d.cover, [k]: v } }));
   const setLine = (k, i, v) => setDoc((d) => ({ ...d, cover: { ...d.cover, [k]: d.cover[k].map((x, j) => (j === i ? v : x)) } }));
   const removeBlock = (i) => setDoc((d) => ({ ...d, blocks: d.blocks.filter((_, j) => j !== i) }));
+  // Edits typed on the preview. A block that's been emptied is taken out.
+  const editBlock = (i, nb) => setDoc((d) => ({ ...d, blocks: nb ? d.blocks.map((x, j) => (j === i ? nb : x)) : d.blocks.filter((_, j) => j !== i) }));
+  const editCover = (k, i, v) => (i === null ? setCover(k, v) : setLine(k, i, v));
 
   const picker = (
     <input ref={input} type="file" accept={ACCEPT} hidden onChange={(e) => upload(e.target.files && e.target.files[0])} />
@@ -97,7 +100,8 @@ export default function Letterhead() {
           <>
             <div className="row" style={{ marginTop: 14 }}>
               <label className="label" htmlFor="lh-title"><span>Title</span></label>
-              <input id="lh-title" className="input" value={c.title} maxLength={120} placeholder="e.g. Recruitment Partnership Proposal" onChange={(e) => setCover("title", e.target.value)} />
+              <textarea id="lh-title" className="input" rows={2} value={c.title} maxLength={240} placeholder={"e.g. Tedd Engineering\nRecruitment Partnership Proposal"} onChange={(e) => setCover("title", e.target.value.split("\n").slice(0, 3).join("\n"))} />
+              <div className="hint">Press Enter to put the rest on a second line. The first line is shown larger, as in the design.</div>
             </div>
             <div className="row">
               <label className="label"><span>Prepared for <span className="opt">(optional)</span></span></label>
@@ -119,7 +123,7 @@ export default function Letterhead() {
 
         <h3 className="group-title" style={{ marginTop: 24 }}>Layout</h3>
         <label className="check"><input type="checkbox" checked={doc.breakSections} onChange={(e) => setDoc((d) => ({ ...d, breakSections: e.target.checked }))} /> Start each main heading on a new page</label>
-        <div className="hint">Hover over anything in the preview and click × to leave it out.</div>
+        <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block and click × to take the whole thing out.</div>
 
         <div className="actions" style={{ marginTop: 20 }}>
           <button type="button" className="btn btn-primary" onClick={download} disabled={!!busy || (!doc.blocks.length && !c.on)}>
@@ -130,7 +134,7 @@ export default function Letterhead() {
       </div>
 
       <div className="lh-preview">
-        {c.on ? <Scaled><Cover cover={c} /></Scaled> : null}
+        {c.on ? <Scaled><Cover cover={c} onEdit={editCover} /></Scaled> : null}
         <Scaled>
           <div className="lh-sheet">
             <div className="lh-body">
@@ -139,7 +143,7 @@ export default function Letterhead() {
                 if (b.type === "h1") seenH1 = true;
                 return (
                   <div key={i} className={"lh-edit" + (brk ? " lh-pagebreak" : "")}>
-                    <Block b={b} first={i === 0 || brk} />
+                    <Block b={b} first={i === 0 || brk} onEdit={(nb) => editBlock(i, nb)} />
                     <button type="button" className="lh-x" title="Leave this out" onClick={() => removeBlock(i)}>×</button>
                   </div>
                 );
