@@ -59,7 +59,6 @@ export default function RequestForm() {
     if (!on && max && x[k].length >= max) return x;
     return { ...x, [k]: on ? x[k].filter((y) => y !== v) : [...x[k], v] };
   });
-  const pm = now && now.getHours() >= 12;
 
   async function submit(e) {
     e.preventDefault();
@@ -130,10 +129,6 @@ export default function RequestForm() {
           <input id="r-deadline" type="date" className="input" value={f.deadline} min={today()} required onChange={(e) => set("deadline", e.target.value)} />
         </div>
       </div>
-      <div className="hint" style={{ marginTop: -10, marginBottom: 18 }}>
-        Please select the deadline for the request. <strong>Ad requests made in the PM will be completed the following day.</strong>
-        {pm ? " (It’s the afternoon now.)" : ""}
-      </div>
 
       <div className="row">
         <label className="label"><span>Brand <span className="opt">(choose any that apply)</span></span></label>
@@ -153,7 +148,6 @@ export default function RequestForm() {
 
       <div className="row">
         <label className="label"><span>What are you requesting? *</span><span className="opt">{f.requesting.length}/{MAX_REQUESTS}</span></label>
-        <div className="hint" style={{ marginTop: 0 }}><strong>Please only request one thing at once</strong> (two at most).</div>
         <div className="req-checks">
           {REQUESTS.map((x) => {
             const on = f.requesting.includes(x);
