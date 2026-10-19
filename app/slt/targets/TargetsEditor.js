@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { blankTargets, normaliseTargets, targetsFileName, newPage, DESIGNS, LABELS, PHOTOS, designById, MAX_PAGES, MAX_POINTS,
-  DIVISIONS, FOLDERS, LIBRARY_PHOTOS, applyDivision, divisionPhotoFor, photoSlot, thumbUrl, photoUrl, libPhoto } from "../../../lib/slt/targets";
+  FOLDERS, LIBRARY_PHOTOS, photoSlot, thumbUrl, photoUrl, libPhoto } from "../../../lib/slt/targets";
 import { PhotoFramer } from "../../proposals/kit";
 import { targetsSlides } from "../../../lib/slt/TargetsSlides";
 import Scaled from "../Scaled";
@@ -43,7 +43,7 @@ export default function TargetsEditor() {
     setOpen(-1);
   };
   const add = () => {
-    setD((x) => (x.pages.length >= MAX_PAGES ? x : { ...x, pages: [...x.pages, divisionPhotoFor(x, newPage(adding))] }));
+    setD((x) => (x.pages.length >= MAX_PAGES ? x : { ...x, pages: [...x.pages, newPage(adding)] }));
     setOpen(d.pages.length);
     setTimeout(() => document.getElementById(`slide-${d.pages.length}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
   };
@@ -58,30 +58,6 @@ export default function TargetsEditor() {
   }
 
   const slides = targetsSlides(d);
-  const chooseDivision = (div) => {
-    if (div && d.started && !window.confirm(`Swap the photos for ${div}’s? Any photos you’ve picked or moved will change.`)) return;
-    setD((x) => ({ ...(div ? applyDivision(x, div) : { ...x, division: "" }), started: true }));
-  };
-
-  // First: which division it's for, so its photos can go in.
-  if (!d.started) {
-    return (
-      <div className="panel" style={{ maxWidth: 520 }}>
-        <h3 className="group-title" style={{ marginTop: 0 }}>Which division is it for?</h3>
-        <p className="hint" style={{ marginTop: 0 }}>Photos from that division go into the slides. If it hasn’t got enough, the rest keep the template’s photos. You can change any of them at the end.</p>
-        <div className="slt-tabs">
-          {DIVISIONS.map((x) => (
-            <button key={x} type="button" onClick={() => chooseDivision(x)}>
-              {x} <span style={{ opacity: 0.6 }}>({LIBRARY_PHOTOS.filter((p) => p.folders.includes(x)).length})</span>
-            </button>
-          ))}
-        </div>
-        <button type="button" className="link" style={{ background: "none", border: 0, padding: 0, color: "var(--green-dark)", textDecoration: "underline", cursor: "pointer", font: "inherit", fontSize: 13 }}
-          onClick={() => chooseDivision("")}>Skip – keep the template’s photos</button>
-      </div>
-    );
-  }
-
   const show = (i) => {
     setOpen(open === i ? -1 : i);
     document.getElementById(`slide-${i}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -99,14 +75,6 @@ export default function TargetsEditor() {
             <label className="label" htmlFor="t-period"><span>Dates <span className="opt">(every page)</span></span></label>
             <input id="t-period" className="input" value={d.period} maxLength={60} onChange={(e) => set("period", e.target.value)} />
           </div>
-        </div>
-
-        <div className="row">
-          <label className="label" htmlFor="t-div"><span>Division <span className="opt">(its photos go in)</span></span></label>
-          <select id="t-div" className="slt-who" value={d.division} onChange={(e) => chooseDivision(e.target.value)}>
-            <option value="">— None (template photos) —</option>
-            {DIVISIONS.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
         </div>
 
         <h3 className="group-title">Pages</h3>
@@ -193,7 +161,7 @@ export default function TargetsEditor() {
         <div className="hint">Long text gets smaller to fit its slide. Leave a box empty to leave it off.</div>
 
         <h3 className="group-title" style={{ marginTop: 24 }}>Pictures</h3>
-        <Pictures key={d.division} d={d} setPage={setPage} />
+        <Pictures d={d} setPage={setPage} />
 
         <div className="actions" style={{ marginTop: 20 }}>
           <button type="button" className="btn btn-primary" onClick={download} disabled={!!busy || !d.pages.length}>{busy || "Download PDF"}</button>
@@ -214,11 +182,11 @@ export default function TargetsEditor() {
   );
 }
 
-// The photo on each page: pick any photo (the division's first, then any folder or the template's),
+// The photo on each page: starts as the template's; pick any photo (all, one division's folder, or the template's),
 // then drag it to choose which part shows.
 function Pictures({ d, setPage }) {
   const [openPic, setOpenPic] = useState(-1);
-  const [folder, setFolder] = useState(d.division || "All photos");
+  const [folder, setFolder] = useState("All photos");
   const pages = d.pages.map((p, i) => ({ p, i })).filter(({ p }) => designById(p.design).fields.includes("photo"));
   const list = folder === "Template photos" ? PHOTOS.map((x) => `${x.id}`)
     : LIBRARY_PHOTOS.filter((x) => folder === "All photos" || x.folders.includes(folder)).map((x) => `lib:${x.id}`);
@@ -226,7 +194,7 @@ function Pictures({ d, setPage }) {
   const scrollTo = (i) => document.getElementById(`slide-${i}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   return (
     <>
-      <p className="hint" style={{ marginTop: -6 }}>Open a page to swap its photo, then drag the picture to choose which part shows.</p>
+      <p className="hint" style={{ marginTop: -6 }}>Each page starts with the template’s photo. Open a page to swap it for any photo – pick a division’s folder or look through them all – then drag the picture to choose which part shows.</p>
       {pages.map(({ p, i }) => {
         const name = [p.title, p.subtitle].filter((x) => String(x || "").trim()).join(" – ").replace(/\n/g, " ") || p.pill || designById(p.design).name;
         const lib = libPhoto(p.photo);
@@ -247,8 +215,8 @@ function Pictures({ d, setPage }) {
                   onChange={(pos) => setPage(i, (x) => ({ ...x, pos }))} />
                 <div className="slt-two" style={{ margin: "10px 0 8px", gridTemplateColumns: "1fr" }}>
                   <select className="slt-who" value={folder} onChange={(e) => setFolder(e.target.value)} aria-label="Which photos">
-                    {FOLDERS.map((f) => <option key={f} value={f}>{f}{f === d.division ? " (this division)" : ""} – {LIBRARY_PHOTOS.filter((x) => x.folders.includes(f)).length}</option>)}
                     <option value="All photos">All photos – {LIBRARY_PHOTOS.length}</option>
+                    {FOLDERS.map((f) => <option key={f} value={f}>{f} – {LIBRARY_PHOTOS.filter((x) => x.folders.includes(f)).length}</option>)}
                     <option value="Template photos">Template photos – {PHOTOS.length}</option>
                   </select>
                 </div>
