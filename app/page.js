@@ -31,14 +31,6 @@ const TOOLS = [
     image: "/letterhead/tile-standard.jpg",
   },
   {
-    id: "slt",
-    title: "SLT",
-    blurb: "Confidential documents for the senior leadership team. Password protected.",
-    href: "/slt",
-    cta: "Open (password needed)",
-    icon: "lock",
-  },
-  {
     id: "request",
     title: "Marketing Request Form",
     blurb: "Ask the marketing team for something new.",
@@ -52,6 +44,14 @@ const TOOLS = [
     href: "https://drive.google.com/drive/folders/1mYJ6Nixmu8soKt-tno6B7CiWPBDqioeX?usp=drive_link",
     icon: "folder",
     external: true,
+  },
+  {
+    id: "slt",
+    title: "SLT",
+    blurb: "Confidential documents for the senior leadership team. Password protected.",
+    href: "/slt",
+    cta: "Open (password needed)",
+    icon: "lock",
   },
 ];
 
