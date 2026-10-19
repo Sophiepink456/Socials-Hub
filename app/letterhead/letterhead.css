@@ -115,8 +115,13 @@
 .lh-edit .lh-x:hover { color: #c0392b; border-color: #c0392b; }
 /* Paged preview */
 .lh-pageno { position: absolute; top: 18pt; right: 48pt; font-size: 8pt; color: #9aa09c; }
-.lh-tools { position: absolute; top: -4pt; right: -30pt; display: flex; flex-direction: column; gap: 4pt; opacity: 0; transition: opacity .15s; }
-.lh-edit:hover .lh-tools { opacity: 1; }
+/* Hover toolbar: sits just above the block's top-right corner. */
+.lh-tools { position: absolute; top: -24pt; right: -6pt; z-index: 5; display: flex; flex-direction: row; align-items: center; gap: 4pt;
+  padding: 3pt; background: #fff; border: 1px solid #d0d3d1; border-radius: 12pt; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  opacity: 0; pointer-events: none; transition: opacity .15s; }
+.lh-edit:hover .lh-tools, .lh-tools:focus-within { opacity: 1; pointer-events: auto; }
+.lh-edit:hover { z-index: 4; }
+.lh-style { font: 600 9pt/1.2 "Inter", system-ui, sans-serif; color: #2d312e; border: 1px solid #d0d3d1; border-radius: 8pt; padding: 2pt 4pt; background: #fff; cursor: pointer; max-width: 150pt; }
 .lh-tools button { width: 20pt; height: 20pt; border-radius: 50%; border: 1px solid #d0d3d1; background: #fff; color: #888; font-size: 11pt; line-height: 1; cursor: pointer; padding: 0; }
 .lh-tools button:hover { color: var(--green-dark, #5b8a00); border-color: #93bf20; }
 .lh-tools .lh-del:hover { color: #c0392b; border-color: #c0392b; }

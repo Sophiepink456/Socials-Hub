@@ -160,7 +160,7 @@ export default function Letterhead({ mode = "new", record = null, onRecord, bran
 
         <h3 className="group-title" style={{ marginTop: 24 }}>Layout</h3>
         <label className="check"><input type="checkbox" checked={doc.breakSections} onChange={(e) => setDoc((d) => ({ ...d, breakSections: e.target.checked }))} /> Start each main heading on a new page</label>
-        <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block for ⤒ (start a new page there) or × (take it out).</div>
+        <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block to change its style (main heading, sub-heading, small heading, normal text or small print), ⤒ to start a new page there, or × to take it out.</div>
 
         {review ? (
           <>
@@ -226,6 +226,8 @@ export function LetterheadView({ data }) {
 // The body split into A4 pages, the way it will print: every block is measured off screen,
 // then pages are filled to the printable height (842pt less the 48pt top and 92pt footer
 // margins), starting a new page at each page break, and at main headings when that's ticked.
+// Styles a heading or paragraph can be switched to from the preview.
+const STYLES = [["h1", "Main heading (green line)"], ["h2", "Sub-heading (green line)"], ["h3", "Small heading"], ["p", "Normal text"], ["note", "Small print"]];
 const PT = 4 / 3;
 const PAGE_H = (842 - 48 - 92) * PT;
 function Pages({ doc, editBlock, removeBlock, addBreak }) {
@@ -277,6 +279,12 @@ function Pages({ doc, editBlock, removeBlock, addBreak }) {
                 <div key={i} className="lh-edit">
                   <Block b={doc.blocks[i]} first={k === 0} onEdit={(nb) => editBlock(i, nb)} />
                   <span className="lh-tools">
+                    {STYLES.some(([t]) => t === doc.blocks[i].type) ? (
+                      <select className="lh-style" title="Text style" value={doc.blocks[i].type}
+                        onChange={(e) => editBlock(i, { ...doc.blocks[i], type: e.target.value })}>
+                        {STYLES.map(([t, label]) => <option key={t} value={t}>{label}</option>)}
+                      </select>
+                    ) : null}
                     {k > 0 ? <button type="button" title="Start a new page here" onClick={() => addBreak(i)}>⤒</button> : null}
                     <button type="button" className="lh-del" title="Take this out" onClick={() => removeBlock(i)}>×</button>
                   </span>
