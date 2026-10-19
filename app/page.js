@@ -33,8 +33,9 @@ const TOOLS = [
   {
     id: "request",
     title: "Marketing Request Form",
-    blurb: "Ask the marketing team for something new.",
-    href: null,
+    blurb: "Ask the marketing team for something new. It goes straight onto their monday.com board.",
+    href: "/request",
+    cta: "Make a request",
     icon: "form",
   },
   {

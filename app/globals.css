@@ -329,3 +329,14 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .stock-pic { position: relative; }
 .stock-pic:disabled { cursor: progress; }
 .stock-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.75); font-size: 13px; font-weight: 600; }
+
+/* Marketing Request Form */
+.req-two { grid-template-columns: 1fr 1fr; gap: 16px; }
+.req-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.req-check { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; cursor: pointer; background: #fff; }
+.req-check.on { border-color: var(--green); background: #f5f9e9; }
+.req-check.off { opacity: .45; cursor: not-allowed; }
+.req-check input { accent-color: var(--green-dark); }
+.req-file { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.slt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 600px) { .req-two, .slt-two { grid-template-columns: 1fr; } }

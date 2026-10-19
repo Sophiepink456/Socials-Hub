@@ -214,7 +214,9 @@ export default function Settings() {
           <tr><td>Claude (photos, logo, About, spelling)</td><td>{ok(data.checks.claude)} <button type="button" className="link" onClick={testClaude} disabled={!!busy}>{busy === "Testing…" ? "Testing…" : "Test Claude"}</button></td></tr>
           <tr><td>Emails (Zapier webhook)</td><td>{ok(data.checks.email)}</td></tr>
           <tr><td>Branded ads (Google Drive)</td><td>{ok(data.checks.ads)}</td></tr>
+          <tr><td>monday.com (Marketing Request Form)</td><td>{ok(data.checks.monday && data.checks.monday.connected)}{data.checks.monday && data.checks.monday.by ? <span className="hint"> · {data.checks.monday.by}</span> : null}</td></tr>
         </tbody></table>
+        <MondayToken code={code} onDone={(m) => setData((d) => ({ ...d, checks: { ...d.checks, monday: m } }))} />
         {msg && /^Claude/.test(msg) ? <div className="done-msg" style={{ marginTop: 10 }}>{msg}</div> : null}
       </div>
 
@@ -348,6 +350,34 @@ function AdNames({ code }) {
           </div>
         </>
       ) : null}
+    </div>
+  );
+}
+
+// Paste a monday.com API token so the Marketing Request Form can add items to the board.
+function MondayToken({ code, onDone }) {
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  async function save() {
+    setBusy(true); setMsg("");
+    try {
+      const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ mondayToken: token }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Couldn’t connect.");
+      setMsg(`Connected as ${j.monday.by} – the request form now adds items to “${j.monday.board}”.`);
+      setToken("");
+      onDone(j.monday);
+    } catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+  return (
+    <div className="row" style={{ marginTop: 14 }}>
+      <label className="label" htmlFor="monday-token"><span>monday.com API token</span></label>
+      <input id="monday-token" type="password" className="input" autoComplete="off" value={token} placeholder="Paste the token here" onChange={(e) => setToken(e.target.value)} />
+      <div className="hint">In monday.com: your profile picture → Developers → My access tokens → Show → copy. It’s checked, then kept privately on the hub (it’s never shown again).</div>
+      <div className="actions"><button type="button" className="btn btn-ghost" disabled={busy || !token.trim()} onClick={save}>{busy ? "Checking…" : "Connect monday.com"}</button></div>
+      {msg ? <div className="done-msg">{msg}</div> : null}
     </div>
   );
 }

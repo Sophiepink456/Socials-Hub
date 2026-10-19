@@ -7,6 +7,7 @@ import { loadRecord } from "../../../lib/server/proposals";
 import { loadLatestJson } from "../../../lib/server/store";
 import { storageReport, tidyStorage } from "../../../lib/server/housekeeping";
 import { docTitle, docType, isLetter } from "../../../lib/docs";
+import { mondayStatus, saveToken } from "../../../lib/server/monday";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export async function GET(req) {
     proposals,
     drafts,
     copies,
-    checks: { storage: hasStore(), claude: hasClaude(), email: !!process.env.ZAPIER_HOOK_URL, ads: !!(settings.adsScriptUrl || process.env.ADS_SCRIPT_URL) },
+    checks: { storage: hasStore(), claude: hasClaude(), email: !!process.env.ZAPIER_HOOK_URL, ads: !!(settings.adsScriptUrl || process.env.ADS_SCRIPT_URL), monday: await mondayStatus().catch(() => ({ connected: false })) },
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -75,6 +76,11 @@ export async function POST(req) {
     if (body.rename) {
       const d = await renameCopy(body.rename.id, body.rename.name);
       return d ? Response.json({ ok: true, name: d.name }) : Response.json({ error: "Couldn't find that one." }, { status: 404 });
+    }
+    // Connect the Marketing Request Form to monday.com (the token is checked, then kept privately).
+    if (body.mondayToken) {
+      try { const who = await saveToken(body.mondayToken); return Response.json({ monday: { connected: true, by: who.name, board: who.board } }); }
+      catch (e) { return Response.json({ error: e.message }, { status: 400 }); }
     }
     if (body.storage) return Response.json({ storage: await storageReport() });
     if (body.tidy) return Response.json({ tidy: await tidyStorage({ dryRun: !!body.tidy.dryRun }) });
