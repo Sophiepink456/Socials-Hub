@@ -1,6 +1,6 @@
 import "./letterhead.css";
 
-export const metadata = { title: "Letterheaded Documents · Marketing Hub" };
+export const metadata = { title: "Powered by Elevation · Marketing Hub" };
 
 // Inter and Google Sans Flex, as used in the Figma letterhead.
 export default function LetterheadLayout({ children }) {

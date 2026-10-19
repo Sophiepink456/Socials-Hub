@@ -16,7 +16,7 @@ const TOOLS = [
   },
   {
     id: "letterhead",
-    title: "Letterheaded Documents",
+    title: "Powered by Elevation",
     blurb: "Upload a Word doc or PDF and get it back on the Elevation letterhead.",
     href: "/letterhead",
     cta: "Upload a document",
