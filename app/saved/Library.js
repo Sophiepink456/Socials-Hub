@@ -49,7 +49,7 @@ export default function Library() {
       <h2 className="section-title">{word}<span className="g">.</span></h2>
       {items.length ? (
         <table className="table">
-          <thead><tr><th>Client – role</th><th>Signed off</th><th></th></tr></thead>
+          <thead><tr><th>Document</th><th>Signed off</th><th></th></tr></thead>
           <tbody>
             {items.map((d) => (
               <tr key={d.id}>
@@ -65,10 +65,11 @@ export default function Library() {
   );
   return (
     <>
-      <p className="lede">Your proposals and candidate packs once they’ve been signed off. Only you can see this page: it’s opened with your private link.</p>
+      <p className="lede">Your proposals, candidate packs and Powered by Elevation documents once they’ve been signed off. Only you can see this page: it’s opened with your private link.</p>
       <p className="hint" style={{ marginTop: -18 }}>{docs.email} · <button type="button" className="link muted" onClick={signOut}>Not you? Sign out of this browser</button></p>
       {list(docs.proposals, "Proposals")}
       {list(docs.packs, "Candidate packs")}
+      {list(docs.letters || [], "Powered by Elevation documents")}
     </>
   );
 }
@@ -88,7 +89,7 @@ function AskForLink({ err }) {
   }
   return (
     <>
-      <p className="lede">Your own proposals and candidate packs once they’ve been signed off. Each person’s Saved Docs are private: enter your work email and we’ll email you your own link.</p>
+      <p className="lede">Your own proposals, candidate packs and Powered by Elevation documents once they’ve been signed off. Each person’s Saved Docs are private: enter your work email and we’ll email you your own link.</p>
       {err ? <p className="hint warn">{err}</p> : null}
       <form className="panel" style={{ maxWidth: 460 }} onSubmit={send}>
         <div className="row">

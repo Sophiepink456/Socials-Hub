@@ -4,6 +4,8 @@
 import { useEffect, useState } from "react";
 import ProposalEditor from "../../ProposalEditor";
 import CandidateEditor from "../../CandidateEditor";
+import Letterhead from "../../../letterhead/Letterhead";
+import { docTitle, docType } from "../../../../lib/docs";
 
 export default function Review({ id, k }) {
   const [rec, setRec] = useState(null);
@@ -20,8 +22,8 @@ export default function Review({ id, k }) {
   const d = rec.data;
   return (
     <>
-      <h1 className="h1">{d.clientName || "Client"} – {d.roleTitle || "Role"}<span className="g">.</span></h1>
-      <p className="hint" style={{ marginTop: -8 }}>{d.kind === "candidate" ? "Candidate pack" : "Proposal"}</p>
+      <h1 className="h1">{docTitle(d)}<span className="g">.</span></h1>
+      <p className="hint" style={{ marginTop: -8 }}>{docType(d)}</p>
       <div className="review-banner">
         <span className="status">{rec.statusLabel}</span>
         <span className="hint" style={{ marginLeft: 10 }}>
@@ -40,7 +42,8 @@ export default function Review({ id, k }) {
           </div>
         ))}
       </div>
-      {d.kind === "candidate"
+      {d.kind === "letterhead" ? <Letterhead mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />
+        : d.kind === "candidate"
         ? <CandidateEditor mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />
         : <ProposalEditor mode="review" record={{ ...rec, key: k }} onRecord={(r) => setRec(r)} />}
     </>

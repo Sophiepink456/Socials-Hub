@@ -19,13 +19,13 @@ export async function GET(req) {
   if (id) {
     const src = u.searchParams.get("src") === "copy" ? "copy" : "rec";
     const rec = src === "copy" ? await loadCopy(id) : await loadRecord(id).catch(() => null);
-    if (!rec || rec.removed || !rec.data) return Response.json({ error: "Couldn’t find that one any more." }, { status: 404 });
+    if (!rec || rec.removed || !rec.data || rec.data.kind === "letterhead") return Response.json({ error: "Couldn’t find that one any more." }, { status: 404 });
     return Response.json({ data: convertDoc(rec.data, target), from: kindOf(rec.data) }, { headers: { "Cache-Control": "no-store" } });
   }
   const [recs, copies] = await Promise.all([listRecords(120).catch(() => []), listCopies().catch(() => [])]);
   const items = [
     ...copies.map((c) => ({ id: c.id, src: "copy", kind: kindOf(c.data), name: c.name, client: c.data.clientName || "", role: c.data.roleTitle || "", consultant: "", date: c.updatedAt })),
-    ...recs.map((r) => ({
+    ...recs.filter((r) => r.data && r.data.kind !== "letterhead").map((r) => ({
       id: r.id, src: "rec", kind: kindOf(r.data), client: r.data.clientName || "Client", role: r.data.roleTitle || "Role",
       consultant: (r.submittedBy && r.submittedBy.name) || r.data.consultant1 || "", date: r.createdAt,
     })),

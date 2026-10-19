@@ -2,7 +2,8 @@
 
 // The final checker's view: every page, then approve or leave comments.
 import { useEffect, useRef, useState } from "react";
-import { normaliseDoc, docPages, docWord } from "../../../../lib/docs";
+import { normaliseDoc, docPages, docWord, docTitle, isLetter } from "../../../../lib/docs";
+import { LetterheadView } from "../../../letterhead/Letterhead";
 
 export default function Check({ id, c }) {
   const [rec, setRec] = useState(null);
@@ -43,13 +44,14 @@ export default function Check({ id, c }) {
   }
 
   if (err) return <p className="lede">{err}</p>;
-  if (!rec) return <p className="lede">Opening the proposal…</p>;
+  if (!rec) return <p className="lede">Opening…</p>;
   const p = normaliseDoc(rec.data);
-  const pages = docPages(p, ctx);
+  const pages = isLetter(p) ? [] : docPages(p, ctx);
   return (
     <>
-      <h1 className="h1">{p.clientName || "Client"} – {p.roleTitle || "Role"}<span className="g">.</span></h1>
+      <h1 className="h1">{docTitle(p)}<span className="g">.</span></h1>
       <p className="lede">This is a {docWord(p)}. Read through each page, then approve it or leave comments for changes. {rec.pdf ? <a href={rec.pdf} target="_blank" rel="noreferrer">Open the PDF</a> : null}</p>
+      {isLetter(p) ? <div style={{ maxWidth: 680 }}><LetterheadView data={p} /></div> : null}
       <div className="pages-scroll">
         {pages.map((pg, i) => (
           <div key={pg.key}>

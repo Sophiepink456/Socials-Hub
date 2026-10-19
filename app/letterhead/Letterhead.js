@@ -3,11 +3,48 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { normaliseDoc, pdfName } from "../../lib/letterhead/doc";
 import { Cover, Block } from "../../lib/letterhead/Sheets";
+// Loaded here too so the proof-reading and final-check pages (under /proposals) get the styles.
+import "./letterhead.css";
 
 const ACCEPT = ".docx,.pdf,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
 
-export default function Letterhead() {
-  const [doc, setDoc] = useState(null);
+// mode "new": a consultant uploads a document and sends it for proof-reading.
+// mode "review": the proof-reader edits it, saves, sends to the final checker, then to the consultant
+// (the same sign-off route as proposals and candidate packs, via /api/proposals/…).
+export default function Letterhead({ mode = "new", record = null, onRecord }) {
+  const review = mode === "review";
+  const [doc, setDoc] = useState(() => (record ? normaliseDoc(record.data) : null));
+  const [submit, setSubmit] = useState(null); // { name, email } while the send panel is open
+  const [done, setDone] = useState("");
+  const [sendTo, setSendTo] = useState(record ? (record.submittedBy && record.submittedBy.email) || "" : "");
+
+  async function sendForProofing() {
+    if (!submit.name.trim() || !submit.email.trim()) { alert("Add your name and email so the finished PDF can come back to you."); return; }
+    setBusy("Sending…"); setErr("");
+    try {
+      const r = await fetch("/api/proposals/submit", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposal: { ...doc, kind: "letterhead" }, submitter: submit }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error);
+      try { localStorage.setItem("hub-submitter", JSON.stringify(submit)); } catch {}
+      setSubmit(null);
+      setDone("Sent for proof-reading. You’ll get the finished PDF by email once it’s been checked, and it’ll be in your Saved Docs.");
+    } catch (e) { setErr(e.message || "Sorry, it didn't send. Try again in a moment."); } finally { setBusy(""); }
+  }
+
+  async function reviewAction(action, label) {
+    if (action === "send-consultant" && !sendTo.trim()) { alert("Add the consultant's email."); return; }
+    if (action === "send-consultant" && !confirm(`Send the finished document to ${sendTo}?`)) return;
+    setBusy(label); setErr(""); setDone("");
+    try {
+      const r = await fetch(`/api/proposals/${record.id}`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ k: record.key, action, data: { ...doc, kind: "letterhead" }, to: sendTo }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      onRecord && onRecord(j);
+      setDone(action === "save" ? "Changes saved and the PDF updated." : action === "send-check" ? "Sent to the final checker." : `Sent to ${sendTo}.`);
+    } catch (e) { setErr(e.message || "Something went wrong."); } finally { setBusy(""); }
+  }
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [drag, setDrag] = useState(false);
@@ -91,7 +128,7 @@ export default function Letterhead() {
         {picker}
         <div className="row lh-file">
           <span>📄 {doc.fileName || "Your document"}</span>
-          <button type="button" className="link" disabled={!!busy} onClick={() => input.current && input.current.click()}>Upload a different one</button>
+          {!review ? <button type="button" className="link" disabled={!!busy} onClick={() => input.current && input.current.click()}>Upload a different one</button> : null}
         </div>
 
         <h3 className="group-title">Cover page</h3>
@@ -125,11 +162,44 @@ export default function Letterhead() {
         <label className="check"><input type="checkbox" checked={doc.breakSections} onChange={(e) => setDoc((d) => ({ ...d, breakSections: e.target.checked }))} /> Start each main heading on a new page</label>
         <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block for ⤒ (start a new page there) or × (take it out).</div>
 
-        <div className="actions" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-primary" onClick={download} disabled={!!busy || (!doc.blocks.length && !c.on)}>
-            {busy || "Download PDF"}
-          </button>
-        </div>
+        {review ? (
+          <>
+            <div className="actions" style={{ marginTop: 20 }}>
+              <button type="button" className="btn btn-ghost" onClick={() => reviewAction("save", "Saving…")} disabled={!!busy}>Save changes</button>
+              <button type="button" className="btn btn-ghost" onClick={download} disabled={!!busy}>Download PDF</button>
+            </div>
+            <div className="actions"><button type="button" className="btn btn-primary" onClick={() => reviewAction("send-check", "Sending…")} disabled={!!busy}>{busy || "Send to final checker"}</button></div>
+            <div className="row" style={{ marginTop: 16 }}>
+              <label className="label" htmlFor="lh-sendto"><span>Consultant’s email</span></label>
+              <input id="lh-sendto" className="input" value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
+            </div>
+            <div className="actions"><button type="button" className="btn btn-primary" onClick={() => reviewAction("send-consultant", "Sending…")} disabled={!!busy}>Send to consultant</button></div>
+          </>
+        ) : submit ? (
+          <div className="send-panel" style={{ marginTop: 20 }}>
+            <div className="row">
+              <label className="label" htmlFor="lh-name"><span>Your name</span></label>
+              <input id="lh-name" className="input" value={submit.name} onChange={(e) => setSubmit({ ...submit, name: e.target.value })} />
+            </div>
+            <div className="row">
+              <label className="label" htmlFor="lh-email"><span>Your email</span></label>
+              <input id="lh-email" type="email" className="input" value={submit.email} onChange={(e) => setSubmit({ ...submit, email: e.target.value })} />
+              <div className="hint">The finished PDF comes back to this address once it’s been proof-read and checked.</div>
+            </div>
+            <div className="actions">
+              <button type="button" className="btn btn-primary" onClick={sendForProofing} disabled={!!busy}>{busy || "Send"}</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setSubmit(null)} disabled={!!busy}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="actions" style={{ marginTop: 20 }}>
+            <button type="button" className="btn btn-primary" disabled={!!busy || !!done || (!doc.blocks.length && !c.on)}
+              onClick={() => { let me = null; try { me = JSON.parse(localStorage.getItem("hub-submitter") || "null"); } catch {} setSubmit(me || { name: "", email: "" }); }}>
+              Send for proof-reading
+            </button>
+          </div>
+        )}
+        {done ? <div className="done-msg" style={{ marginTop: 12 }}>{done}</div> : null}
         {err ? <p className="hint warn">{err}</p> : null}
       </div>
 
@@ -138,6 +208,17 @@ export default function Letterhead() {
         <Pages doc={doc} editBlock={editBlock} removeBlock={removeBlock} addBreak={addBreak} />
         <div className="preview-note">A4 · Each page as it will print, with the footer bar. The PDF may move a line or two between pages.</div>
       </div>
+    </div>
+  );
+}
+
+// The final checker's view: the cover and every page, nothing editable.
+export function LetterheadView({ data }) {
+  const doc = normaliseDoc(data);
+  return (
+    <div className="lh-preview lh-readonly">
+      {doc.cover.on ? <Scaled><Cover cover={doc.cover} /></Scaled> : null}
+      <Pages doc={doc} />
     </div>
   );
 }
@@ -186,11 +267,13 @@ function Pages({ doc, editBlock, removeBlock, addBreak }) {
         <Scaled key={n}>
           <div className="lh-sheet">
             <span className="lh-pageno">Page {n + 1}</span>
-            {pg.breakAt !== null && doc.blocks[pg.breakAt] && doc.blocks[pg.breakAt].type === "pagebreak" ? (
+            {editBlock && pg.breakAt !== null && doc.blocks[pg.breakAt] && doc.blocks[pg.breakAt].type === "pagebreak" ? (
               <span className="lh-manual">Page break · <button type="button" onClick={() => removeBlock(pg.breakAt)}>Remove</button></span>
             ) : null}
             <div className="lh-body">
-              {pg.items.filter((i) => doc.blocks[i] && doc.blocks[i].type !== "pagebreak").map((i, k) => (
+              {pg.items.filter((i) => doc.blocks[i] && doc.blocks[i].type !== "pagebreak").map((i, k) => (!editBlock ? (
+                <div key={i}><Block b={doc.blocks[i]} first={k === 0} /></div>
+              ) : (
                 <div key={i} className="lh-edit">
                   <Block b={doc.blocks[i]} first={k === 0} onEdit={(nb) => editBlock(i, nb)} />
                   <span className="lh-tools">
@@ -198,7 +281,7 @@ function Pages({ doc, editBlock, removeBlock, addBreak }) {
                     <button type="button" className="lh-del" title="Take this out" onClick={() => removeBlock(i)}>×</button>
                   </span>
                 </div>
-              ))}
+              )))}
               {!doc.blocks.length ? <p className="lh-p" style={{ color: "#888" }}>No content left. Upload the document again to start over.</p> : null}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}

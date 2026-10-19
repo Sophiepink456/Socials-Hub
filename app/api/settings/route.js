@@ -6,12 +6,13 @@ import { listDrafts, removeDraft, listCopies, createCopy, renameCopy, loadCopy }
 import { loadRecord } from "../../../lib/server/proposals";
 import { loadLatestJson } from "../../../lib/server/store";
 import { storageReport, tidyStorage } from "../../../lib/server/housekeeping";
+import { docTitle, docType, isLetter } from "../../../lib/docs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const typeOf = (d) => (d && d.kind === "candidate" ? "Candidate pack" : "Proposal");
+const typeOf = (d) => docType(d);
 const openLink = (d) => `${d.data.kind === "candidate" ? "/proposals/candidate-pack" : "/proposals"}?draft=${d.id}&k=${d.key}`;
 
 const deny = () => Response.json({ error: "Wrong passcode." }, { status: 401 });
@@ -26,7 +27,9 @@ export async function GET(req) {
       id: r.id,
       client: r.data.clientName,
       role: r.data.roleTitle,
-      type: r.data.kind === "candidate" ? "Candidate pack" : "Proposal",
+      type: docType(r.data),
+      label: docTitle(r.data),
+      letter: isLetter(r.data),
       consultant: r.submittedBy && r.submittedBy.name,
       status: STATUS[r.status] || r.status,
       updatedAt: r.updatedAt || r.createdAt,

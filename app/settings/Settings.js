@@ -53,7 +53,7 @@ export default function Settings() {
   }
 
   async function remove(type, r) {
-    if (!confirm(`Remove “${r.name || `${r.client || "Client"} – ${r.role || "Role"}`}” from the list? Its links will stop working.`)) return;
+    if (!confirm(`Remove “${r.name || r.label || `${r.client || "Client"} – ${r.role || "Role"}`}” from the list? Its links will stop working.`)) return;
     const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json", "x-passcode": code }, body: JSON.stringify({ remove: { type, id: r.id } }) });
     const j = await res.json();
     if (!res.ok) { alert(j.error || "Couldn't remove it."); return; }
@@ -117,19 +117,19 @@ export default function Settings() {
   return (
     <div className="settings-grid">
       <div className="panel">
-        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals & candidate packs</h3>
+        <h3 className="group-title" style={{ marginTop: 0, paddingTop: 0, borderTop: 0 }}>Proposals, candidate packs & Powered by Elevation documents</h3>
         {data.proposals.length ? (
           <table className="table">
-            <thead><tr><th>Client – role</th><th>Type</th><th>Consultant</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+            <thead><tr><th>Document</th><th>Type</th><th>Consultant</th><th>Status</th><th>Updated</th><th></th></tr></thead>
             <tbody>
               {data.proposals.map((r) => (
                 <tr key={r.id}>
-                  <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                  <td><a href={r.link}>{r.label || `${r.client || "Client"} – ${r.role || "Role"}`}</a></td>
                   <td>{r.type}</td>
                   <td>{r.consultant}</td>
                   <td>{r.status}</td>
                   <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
-                  <td style={{ whiteSpace: "nowrap" }}><button type="button" className="link" onClick={() => duplicate("proposal", r)}>Duplicate</button> · <button type="button" className="link" onClick={() => remove("proposal", r)}>Remove</button></td>
+                  <td style={{ whiteSpace: "nowrap" }}>{!r.letter ? <><button type="button" className="link" onClick={() => duplicate("proposal", r)}>Duplicate</button> · </> : null}<button type="button" className="link" onClick={() => remove("proposal", r)}>Remove</button></td>
                 </tr>
               ))}
             </tbody>
@@ -163,7 +163,7 @@ export default function Settings() {
               <tbody>
                 {data.drafts.map((r) => (
                   <tr key={r.id}>
-                    <td><a href={r.link}>{r.client || "Client"} – {r.role || "Role"}</a></td>
+                    <td><a href={r.link}>{r.label || `${r.client || "Client"} – ${r.role || "Role"}`}</a></td>
                     <td>{r.type}</td>
                     <td>{r.consultant}</td>
                     <td>{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}</td>
