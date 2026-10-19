@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { normaliseDoc, pdfName } from "../../lib/letterhead/doc";
 import { Cover, Block } from "../../lib/letterhead/Sheets";
 
@@ -59,6 +59,7 @@ export default function Letterhead() {
   const removeBlock = (i) => setDoc((d) => ({ ...d, blocks: d.blocks.filter((_, j) => j !== i) }));
   // Edits typed on the preview. A block that's been emptied is taken out.
   const editBlock = (i, nb) => setDoc((d) => ({ ...d, blocks: nb ? d.blocks.map((x, j) => (j === i ? nb : x)) : d.blocks.filter((_, j) => j !== i) }));
+  const addBreak = (i) => setDoc((d) => ({ ...d, blocks: [...d.blocks.slice(0, i), { type: "pagebreak" }, ...d.blocks.slice(i)] }));
   const editCover = (k, i, v) => (i === null ? setCover(k, v) : setLine(k, i, v));
 
   const picker = (
@@ -84,7 +85,6 @@ export default function Letterhead() {
   }
 
   const c = doc.cover;
-  let seenH1 = false;
   return (
     <div className="editor lh-editor">
       <div className="panel">
@@ -123,7 +123,7 @@ export default function Letterhead() {
 
         <h3 className="group-title" style={{ marginTop: 24 }}>Layout</h3>
         <label className="check"><input type="checkbox" checked={doc.breakSections} onChange={(e) => setDoc((d) => ({ ...d, breakSections: e.target.checked }))} /> Start each main heading on a new page</label>
-        <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block and click × to take the whole thing out.</div>
+        <div className="hint">Click any text in the preview to change it: press Enter to move words onto a new line, or delete anything you don’t want (for example text repeated from the cover). Hover over a block for ⤒ (start a new page there) or × (take it out).</div>
 
         <div className="actions" style={{ marginTop: 20 }}>
           <button type="button" className="btn btn-primary" onClick={download} disabled={!!busy || (!doc.blocks.length && !c.on)}>
@@ -135,28 +135,78 @@ export default function Letterhead() {
 
       <div className="lh-preview">
         {c.on ? <Scaled><Cover cover={c} onEdit={editCover} /></Scaled> : null}
-        <Scaled>
+        <Pages doc={doc} editBlock={editBlock} removeBlock={removeBlock} addBreak={addBreak} />
+        <div className="preview-note">A4 · Each page as it will print, with the footer bar. The PDF may move a line or two between pages.</div>
+      </div>
+    </div>
+  );
+}
+
+// The body split into A4 pages, the way it will print: every block is measured off screen,
+// then pages are filled to the printable height (842pt less the 48pt top and 92pt footer
+// margins), starting a new page at each page break, and at main headings when that's ticked.
+const PT = 4 / 3;
+const PAGE_H = (842 - 48 - 92) * PT;
+function Pages({ doc, editBlock, removeBlock, addBreak }) {
+  const measure = useRef(null);
+  const [pages, setPages] = useState(null);
+  const [fontsReady, setFontsReady] = useState(0);
+  useEffect(() => { if (document.fonts) document.fonts.ready.then(() => setFontsReady((n) => n + 1)); }, []);
+  useLayoutEffect(() => {
+    const box = measure.current;
+    if (!box) return;
+    const els = Array.from(box.children);
+    const out = [{ items: [], breakAt: null }];
+    let used = 0, prevMb = 0, seenH1 = false;
+    const newPage = (breakAt = null) => { out.push({ items: [], breakAt }); used = 0; prevMb = 0; };
+    doc.blocks.forEach((b, i) => {
+      const cur = out[out.length - 1];
+      if (b.type === "pagebreak") { if (cur.items.length || cur.breakAt !== null) newPage(i); else cur.breakAt = i; return; }
+      if (doc.breakSections && b.type === "h1" && seenH1 && cur.items.length) newPage();
+      if (b.type === "h1") seenH1 = true;
+      const el = els[i];
+      const inner = el && el.firstElementChild;
+      const cs = inner ? getComputedStyle(inner) : null;
+      const mt = cs ? parseFloat(cs.marginTop) || 0 : 0, mb = cs ? parseFloat(cs.marginBottom) || 0 : 0;
+      const h = el ? el.offsetHeight : 0;
+      const page = out[out.length - 1];
+      let add = (page.items.length ? Math.max(prevMb, mt) : 0) + h;
+      if (page.items.length && used + add > PAGE_H) { newPage(); add = h; }
+      out[out.length - 1].items.push(i);
+      used += add; prevMb = mb;
+    });
+    setPages(out);
+  }, [doc.blocks, doc.breakSections, fontsReady]);
+  return (
+    <>
+      <div ref={measure} className="lh-body lh-measure" aria-hidden="true">
+        {doc.blocks.map((b, i) => <div key={i}><Block b={b} /></div>)}
+      </div>
+      {(pages || [{ items: doc.blocks.map((_, i) => i), breakAt: null }]).map((pg, n) => (
+        <Scaled key={n}>
           <div className="lh-sheet">
+            <span className="lh-pageno">Page {n + 1}</span>
+            {pg.breakAt !== null && doc.blocks[pg.breakAt] && doc.blocks[pg.breakAt].type === "pagebreak" ? (
+              <span className="lh-manual">Page break · <button type="button" onClick={() => removeBlock(pg.breakAt)}>Remove</button></span>
+            ) : null}
             <div className="lh-body">
-              {doc.blocks.map((b, i) => {
-                const brk = doc.breakSections && b.type === "h1" && seenH1;
-                if (b.type === "h1") seenH1 = true;
-                return (
-                  <div key={i} className={"lh-edit" + (brk ? " lh-pagebreak" : "")}>
-                    <Block b={b} first={i === 0 || brk} onEdit={(nb) => editBlock(i, nb)} />
-                    <button type="button" className="lh-x" title="Leave this out" onClick={() => removeBlock(i)}>×</button>
-                  </div>
-                );
-              })}
+              {pg.items.filter((i) => doc.blocks[i] && doc.blocks[i].type !== "pagebreak").map((i, k) => (
+                <div key={i} className="lh-edit">
+                  <Block b={doc.blocks[i]} first={k === 0} onEdit={(nb) => editBlock(i, nb)} />
+                  <span className="lh-tools">
+                    {k > 0 ? <button type="button" title="Start a new page here" onClick={() => addBreak(i)}>⤒</button> : null}
+                    <button type="button" className="lh-del" title="Take this out" onClick={() => removeBlock(i)}>×</button>
+                  </span>
+                </div>
+              ))}
               {!doc.blocks.length ? <p className="lh-p" style={{ color: "#888" }}>No content left. Upload the document again to start over.</p> : null}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="lh-sheet-footer" src="/letterhead/footer.png" alt="" />
           </div>
         </Scaled>
-        <div className="preview-note">A4 · Page breaks are worked out when you download, and every page gets the footer bar.</div>
-      </div>
-    </div>
+      ))}
+    </>
   );
 }
 
