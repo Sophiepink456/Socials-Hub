@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { normaliseDoc, pdfName } from "../../lib/letterhead/doc";
+import { normaliseDoc, pdfName, BRAND } from "../../lib/letterhead/doc";
 import { Cover, Block } from "../../lib/letterhead/Sheets";
 // Loaded here too so the proof-reading and final-check pages (under /proposals) get the styles.
 import "./letterhead.css";
@@ -11,7 +11,7 @@ const ACCEPT = ".docx,.pdf,.txt,.md,application/pdf,application/vnd.openxmlforma
 // mode "new": a consultant uploads a document and sends it for proof-reading.
 // mode "review": the proof-reader edits it, saves, sends to the final checker, then to the consultant
 // (the same sign-off route as proposals and candidate packs, via /api/proposals/…).
-export default function Letterhead({ mode = "new", record = null, onRecord }) {
+export default function Letterhead({ mode = "new", record = null, onRecord, brand = "pbe" }) {
   const review = mode === "review";
   const [doc, setDoc] = useState(() => (record ? normaliseDoc(record.data) : null));
   const [submit, setSubmit] = useState(null); // { name, email } while the send panel is open
@@ -61,7 +61,7 @@ export default function Letterhead({ mode = "new", record = null, onRecord }) {
       const r = await fetch("/api/letterhead/parse", { method: "POST", body: fd });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.doc) throw new Error(j.error || "Couldn't read that document.");
-      setDoc(normaliseDoc(j.doc));
+      setDoc(normaliseDoc({ ...j.doc, brand }));
     } catch (e) {
       setErr(e.message || "Couldn't read that document.");
     } finally {
@@ -204,7 +204,7 @@ export default function Letterhead({ mode = "new", record = null, onRecord }) {
       </div>
 
       <div className="lh-preview">
-        {c.on ? <Scaled><Cover cover={c} onEdit={editCover} /></Scaled> : null}
+        {c.on ? <Scaled><Cover cover={c} onEdit={editCover} brand={doc.brand} /></Scaled> : null}
         <Pages doc={doc} editBlock={editBlock} removeBlock={removeBlock} addBreak={addBreak} />
         <div className="preview-note">A4 · Each page as it will print, with the footer bar. The PDF may move a line or two between pages.</div>
       </div>
@@ -217,7 +217,7 @@ export function LetterheadView({ data }) {
   const doc = normaliseDoc(data);
   return (
     <div className="lh-preview lh-readonly">
-      {doc.cover.on ? <Scaled><Cover cover={doc.cover} /></Scaled> : null}
+      {doc.cover.on ? <Scaled><Cover cover={doc.cover} brand={doc.brand} /></Scaled> : null}
       <Pages doc={doc} />
     </div>
   );
@@ -285,7 +285,7 @@ function Pages({ doc, editBlock, removeBlock, addBreak }) {
               {!doc.blocks.length ? <p className="lh-p" style={{ color: "#888" }}>No content left. Upload the document again to start over.</p> : null}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="lh-sheet-footer" src="/letterhead/footer.png" alt="" />
+            <img className="lh-sheet-footer" src={(BRAND[doc.brand] || BRAND.pbe).footer} alt="" />
           </div>
         </Scaled>
       ))}

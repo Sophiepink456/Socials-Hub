@@ -65,11 +65,12 @@ export default function Library() {
   );
   return (
     <>
-      <p className="lede">Your proposals, candidate packs and Powered by Elevation documents once they’ve been signed off. Only you can see this page: it’s opened with your private link.</p>
+      <p className="lede">Your proposals, candidate packs, Powered by Elevation documents and Standard Letterheads once they’ve been signed off. Only you can see this page: it’s opened with your private link.</p>
       <p className="hint" style={{ marginTop: -18 }}>{docs.email} · <button type="button" className="link muted" onClick={signOut}>Not you? Sign out of this browser</button></p>
       {list(docs.proposals, "Proposals")}
       {list(docs.packs, "Candidate packs")}
       {list(docs.letters || [], "Powered by Elevation documents")}
+      {list(docs.standard || [], "Standard Letterheads")}
     </>
   );
 }
@@ -89,7 +90,7 @@ function AskForLink({ err }) {
   }
   return (
     <>
-      <p className="lede">Your own proposals, candidate packs and Powered by Elevation documents once they’ve been signed off. Each person’s Saved Docs are private: enter your work email and we’ll email you your own link.</p>
+      <p className="lede">Your own proposals, candidate packs, Powered by Elevation documents and Standard Letterheads once they’ve been signed off. Each person’s Saved Docs are private: enter your work email and we’ll email you your own link.</p>
       {err ? <p className="hint warn">{err}</p> : null}
       <form className="panel" style={{ maxWidth: 460 }} onSubmit={send}>
         <div className="row">

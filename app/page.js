@@ -23,6 +23,14 @@ const TOOLS = [
     image: "/letterhead/tile.jpg",
   },
   {
+    id: "standard-letterhead",
+    title: "Standard Letterheads",
+    blurb: "Upload a Word doc or PDF and get it back on the Elevation Recruitment Group letterhead.",
+    href: "/standard-letterhead",
+    cta: "Upload a document",
+    image: "/letterhead/tile-standard.jpg",
+  },
+  {
     id: "request",
     title: "Marketing Request Form",
     blurb: "Ask the marketing team for something new.",

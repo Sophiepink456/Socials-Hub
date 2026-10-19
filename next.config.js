@@ -6,9 +6,9 @@ const nextConfig = {
       "/api/render/[id]": ["./app/fonts/**/*"],
       // The headless Chrome binary used to print proposals to PDF.
       "/api/proposals/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
-      "/api/letterhead/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png"],
-      "/api/proposals/submit": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png"],
-      "/api/proposals/[id]": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png"],
+      "/api/letterhead/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png", "./public/letterhead/footer-standard.png"],
+      "/api/proposals/submit": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png", "./public/letterhead/footer-standard.png"],
+      "/api/proposals/[id]": ["./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png", "./public/letterhead/footer-standard.png"],
       // Also used to open websites that only show their pictures once JavaScript runs.
       "/api/proposals/scrape": ["./node_modules/@sparticuz/chromium/bin/**/*"],
       "/api/proposals/about": ["./node_modules/@sparticuz/chromium/bin/**/*"],

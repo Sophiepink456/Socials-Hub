@@ -33,7 +33,7 @@ export default function PrintView() {
         html, body { margin: 0; padding: 0; background: #fff; }
         ${cover ? "@page { size: A4; margin: 0; }" : ""}
       `}</style>
-      {cover ? <Cover cover={state.doc.cover} /> : <Body doc={state.doc} />}
+      {cover ? <Cover cover={state.doc.cover} brand={state.doc.brand} /> : <Body doc={state.doc} />}
     </>
   );
 }
