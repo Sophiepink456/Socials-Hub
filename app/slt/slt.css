@@ -1,0 +1,48 @@
+/* SLT folder: the induction sheet (Poppins, as in the Figma) and the editors. */
+@font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-Light.woff2") format("woff2"); font-weight: 300; font-display: block; }
+@font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-Medium.woff2") format("woff2"); font-weight: 500; font-display: block; }
+@font-face { font-family: "PoppinsP"; src: url("/proposal/fonts/Poppins-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: block; }
+
+.ind { position: relative; overflow: hidden; isolation: isolate; background: #292728; color: #fff; font-family: "PoppinsP", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+.ind * { box-sizing: border-box; margin: 0; padding: 0; }
+.ind .ind-pre { white-space: pre-line; }
+
+/* Folder landing page */
+.slt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.slt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.slt-doc { display: flex; gap: 16px; align-items: center; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease; }
+.slt-doc:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.slt-doc svg { width: 44px; height: 44px; flex: none; fill: none; stroke: var(--green-dark); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.slt-doc strong { display: block; font-family: var(--font-area), system-ui, sans-serif; font-size: 17px; }
+.slt-doc span { color: var(--muted); font-size: 13px; }
+.slt-lock { max-width: 420px; }
+
+/* Editors */
+.slt-editor { grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); align-items: start; }
+.slt-editor .panel { max-height: calc(100vh - 40px); overflow: auto; position: sticky; top: 20px; }
+.slt-preview { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.slt-scaled { position: relative; width: 100%; overflow: hidden; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14); background: #1a1a1a; }
+.slt-cap { font-size: 12px; color: var(--muted); margin: 0 0 -10px; }
+.slt-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafbf9; }
+.slt-card > .slt-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
+.slt-x { background: none; border: 0; color: #9aa1a7; cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; }
+.slt-x:hover { color: #c0392b; }
+.slt-add { background: none; border: 1px dashed #b9c0c5; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; color: var(--green-dark); cursor: pointer; }
+.slt-add:hover { border-color: var(--green-dark); }
+.slt-add:disabled { opacity: .4; cursor: not-allowed; }
+.slt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.slt-sess { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: start; margin-bottom: 6px; }
+.slt-sess textarea { min-height: 38px; }
+.slt-sess .slt-who { grid-column: 1 / 2; }
+.slt-sess .slt-x { grid-row: 1 / 3; grid-column: 2; align-self: center; }
+.slt-who { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; width: 100%; }
+.slt-keyrow { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: center; margin-bottom: 8px; }
+.slt-swatch { width: 18px; height: 18px; border-radius: 50%; }
+.slt-day { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.slt-day summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 4px 0; }
+.slt-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: .5px; }
+.slt-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.slt-tabs button { border: 1px solid var(--line); background: #fff; border-radius: 20px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.slt-tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+@media (max-width: 900px) { .slt-editor .panel { position: static; max-height: none; } }

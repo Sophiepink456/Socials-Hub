@@ -31,6 +31,14 @@ const TOOLS = [
     image: "/letterhead/tile-standard.jpg",
   },
   {
+    id: "slt",
+    title: "SLT",
+    blurb: "Confidential documents for the senior leadership team. Password protected.",
+    href: "/slt",
+    cta: "Open (password needed)",
+    icon: "lock",
+  },
+  {
     id: "request",
     title: "Marketing Request Form",
     blurb: "Ask the marketing team for something new.",
@@ -58,6 +66,13 @@ const ICONS = {
     <svg viewBox="0 0 48 48" aria-hidden="true">
       <rect x="9" y="6" width="30" height="37" rx="3" />
       <path d="M18 6v-1h12v1M15 17h4M23 17h10M15 26h4M23 26h10M15 35h4M23 35h10" />
+    </svg>
+  ),
+  lock: (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M5 13a3 3 0 0 1 3-3h10l4 5h18a3 3 0 0 1 3 3v19a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V13Z" />
+      <rect x="18" y="25" width="12" height="9" rx="1.5" />
+      <path d="M20.5 25v-3a3.5 3.5 0 0 1 7 0v3" />
     </svg>
   ),
   folder: (
