@@ -11,7 +11,7 @@ import { GATE_COOKIE, verifyGateToken, SLT_COOKIE, verifySltToken } from "./lib/
 //   and /slt/print (the same for SLT documents), plus the SLT artwork (stock photos and shapes only)
 // - the weekly storage tidy, which has its own check
 const OPEN = [/^\/slt\/print$/, /^\/slt\/(targets|induction)\/[\w.-]+\.(jpg|png|svg)$/, /^\/slt\/photos\/(t\/)?[a-f0-9]+\.jpg$/, /^\/login$/, /^\/api\/login$/, /^\/_next\//, /^\/favicon/, /^\/proposal\//, /^\/designs\//, /^\/headshots\//, /^\/elevation-logo\.png$/,
-  /^\/api\/files\//, /^\/proposals\/print$/, /^\/letterhead\/print$/, /^\/letterhead\/[\w.-]+\.(jpg|png|svg)$/, /^\/api\/cron\//];
+  /^\/api\/files\//, /^\/proposals\/print$/, /^\/letterhead\/print$/, /^\/letterhead\/[\w.-]+\.(jpg|png|svg|woff2)$/, /^\/api\/cron\//];
 
 export async function middleware(req) {
   const { pathname, search } = req.nextUrl;
