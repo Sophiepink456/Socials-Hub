@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { proposalPages } from "../../lib/proposal/pages";
 import { EXTRA_STYLES, styleById, defaultsFor, wordingFields } from "../../lib/proposal/extra";
 import {
-  APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
+  APPROACH, CONSULTANTS, LIMITS, teamSize, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
   assignPhotos, photoFits, textFields, fieldName, SECTIONS,
   MAX_ROLES, roleProfileLimit, blankRole,
 } from "../../lib/proposal/data";
@@ -87,13 +87,17 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
   function pickConsultant(which, name) {
     setP((cur) => {
-      let next = setIn(cur, which === 1 ? "consultant1" : "consultant2", name);
-      const c = which === 1 ? "c1" : "c2";
-      const prev = cur[c];
+      let next = setIn(cur, `consultant${which}`, name);
+      const c = `c${which}`;
+      const prev = cur[c] || {};
       next = setIn(next, `${c}.name`, name);
       if (!prev.email || prev.email === emailFor(prev.name)) next = setIn(next, `${c}.email`, emailFor(name));
       return next;
     });
+  }
+  function setTeamSize(n) {
+    setP((cur) => ({ ...cur, consultantCount: n, twoConsultants: n >= 2 }));
+    setPage("credentials");
   }
 
   async function downloadPdf() {
@@ -267,7 +271,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
     }
   }
 
-  const two = !!p.twoConsultants;
+  const size = teamSize(p);
+  const two = size >= 2;
   // Opening a section also shows its page in the preview.
   const SECTION_PAGE = { client: "title", consultants: "title", understanding: "understanding", about: "about", role: "role", approach: "approach",
     branded: "branded", candidate: "candidate", search: "search", credentials: "credentials", terms: "terms", appendices: "appendices", pictures: "title" };
@@ -360,17 +365,22 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               {CONSULTANTS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <Check label="Two consultants on this proposal" path="twoConsultants" page="title" {...f}
-            hint="The title page then shows both names (no email), and the Credentials page shows two profiles." />
-          {two ? (
-            <div className="row">
-              <label className="label" htmlFor="consultant2"><span>Second consultant</span></label>
-              <select id="consultant2" className="select" value={p.consultant2} onFocus={() => setPage("title")} onChange={(e) => pickConsultant(2, e.target.value)}>
+          <div className="row">
+            <label className="label" htmlFor="teamsize"><span>How many consultants on this proposal?</span></label>
+            <select id="teamsize" className="select" value={size} onChange={(e) => setTeamSize(Number(e.target.value))}>
+              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <div className="hint">With more than one, the title page shows all the names (no email). With three or four, the Credentials page shows a column each, without the “About me” text.</div>
+          </div>
+          {[2, 3, 4].filter((n) => n <= size).map((n) => (
+            <div className="row" key={n}>
+              <label className="label" htmlFor={`consultant${n}`}><span>{["", "", "Second", "Third", "Fourth"][n]} consultant</span></label>
+              <select id={`consultant${n}`} className="select" value={p[`consultant${n}`] || ""} onFocus={() => setPage("title")} onChange={(e) => pickConsultant(n, e.target.value)}>
                 <option value="">Select a consultant</option>
-                {CONSULTANTS.filter((n) => n !== p.consultant1).map((n) => <option key={n} value={n}>{n}</option>)}
+                {CONSULTANTS.filter((c) => c === p[`consultant${n}`] || ![1, 2, 3, 4].some((m) => m !== n && m <= size && p[`consultant${m}`] === c)).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-          ) : null}
+          ))}
           {!two ? <Text label="Email on the title page" path="c1.email" max={LIMITS.email} page="title" {...f} /> : null}
         </Section>
 
@@ -487,18 +497,18 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <Text label="Projected timeframe" path="timeframe" max={LIMITS.timeframe} page="search" {...f} />
         </Section>
 
-        <Section title={`${p.nda ? 8 : 9}. Credentials`} open={open === "credentials"} onToggle={() => toggle("credentials")} done={!!p.c1.about}>
-          {[1, ...(two ? [2] : [])].map((n) => {
+        <Section title={`${p.nda ? 8 : 9}. Credentials`} open={open === "credentials"} onToggle={() => toggle("credentials")} done={size >= 3 ? !!p.c1.title : !!p.c1.about}>
+          {Array.from({ length: size }, (_, i) => i + 1).map((n) => {
             const c = `c${n}`;
-            const name = n === 1 ? p.consultant1 : p.consultant2;
+            const name = p[`consultant${n}`];
             return (
               <div key={n} className="subgroup">
-                <h3 className="group-title">{name || (n === 1 ? "Consultant" : "Second consultant")}</h3>
+                <h3 className="group-title">{name || ["", "Consultant", "Second consultant", "Third consultant", "Fourth consultant"][n]}</h3>
                 {!name ? <p className="hint">Choose the consultant in section 2 first; their headshot is added automatically.</p> : null}
                 <Text label="Job title" path={`${c}.title`} max={LIMITS.consultantTitle} page="credentials" placeholder="e.g. Senior Business Director" {...f} />
                 <Text label="Email" path={`${c}.email`} max={LIMITS.email} page="credentials" {...f} />
                 <Text label="Phone" path={`${c}.phone`} max={LIMITS.phone} page="credentials" placeholder="e.g. 07710 096 839" {...f} />
-                <Text label="About me" path={`${c}.about`} max={two ? LIMITS.aboutTwo : LIMITS.aboutOne} multiline rows={two ? 6 : 10} page="credentials" {...f} />
+                {size <= 2 ? <Text label="About me" path={`${c}.about`} max={two ? LIMITS.aboutTwo : LIMITS.aboutOne} multiline rows={two ? 6 : 10} page="credentials" {...f} /> : null}
                 {two ? (
                   <Text label="Recent placements" path={`${c}.placements`} max={LIMITS.placements} page="credentials" {...f}
                     placeholder="Managing Director | Commercial Manager | Sales Manager"
