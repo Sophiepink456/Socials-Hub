@@ -340,3 +340,13 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .req-file { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .slt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 600px) { .req-two, .slt-two { grid-template-columns: 1fr; } }
+
+/* Salary on the social designs */
+.sal-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+.sal-type { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 4px; font: inherit; font-size: 13px; cursor: pointer; }
+.sal-type.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.sal-row { display: flex; align-items: center; gap: 8px; }
+.sal-box { position: relative; flex: 1 1 0; min-width: 0; }
+.sal-box .input { padding-left: 26px; width: 100%; }
+.sal-pre { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.sal-mid, .sal-post { color: var(--muted); white-space: nowrap; }

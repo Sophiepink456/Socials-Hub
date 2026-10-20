@@ -468,9 +468,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         </Section>
 
         <Section title={`${p.nda ? 10 : 11}. Appendices`} open={open === "appendices"} onToggle={() => toggle("appendices")} done>
-          <Check label="Add an Appendices page" path="appendicesOn" page="appendices" {...f} />
-          {p.appendicesOn ? (
-            <>
+          <p className="hint" style={{ marginTop: 0 }}>The Appendices page is a standard page. Edit the titles, attach the documents, or add more (up to 6). Remove them all to leave the page out.</p>
+          <>
               {(p.appendices || []).map((a, i) => (
                 <div key={i} className="subgroup">
                   <Text label={`Appendix ${i + 1} title`} path={`appendices.${i}.title`} max={LIMITS.appendixTitle} page="appendices" {...f} />
@@ -496,8 +495,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               {(p.appendices || []).length < 6 ? (
                 <button type="button" className="btn btn-ghost btn-small" onClick={() => set("appendices", [...(p.appendices || []), { title: "", link: "" }])}>+ Add an appendix</button>
               ) : null}
-            </>
-          ) : null}
+          </>
         </Section>
 
         <Section title={`${p.nda ? 11 : 12}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>

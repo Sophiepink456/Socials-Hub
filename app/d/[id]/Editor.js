@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getDesign, slideCount, photoSlides, visibleFields } from "../../../lib/designs";
 import { randomPhoto, HEADSHOTS } from "../../../lib/photos";
-import { fileName } from "../../../lib/text";
+import { fileName, SALARY_TYPES, formatSalary, salaryError, moneyDigits, rateText } from "../../../lib/text";
 import { isStockPhoto, stockPath } from "../../../lib/stock";
 
 export default function Editor({ id }) {
   const design = getDesign(id);
   const set_ = design.photoSet || design.id;
   // Fields with a default (e.g. Colour) start filled in.
-  const [values, setValues] = useState(() =>
-    Object.fromEntries(design.fields.filter((f) => f.default).map((f) => [f.key, f.default])));
+  // Salaries start as Annual.
+  const [values, setValues] = useState(() => ({
+    ...Object.fromEntries(design.fields.filter((f) => f.default).map((f) => [f.key, f.default])),
+    ...Object.fromEntries(design.fields.filter((f) => f.type === "salary").map((f) => [`${f.key}Type`, "annual"])),
+  }));
   const count = slideCount(design, values);
   const multi = count > 1;
   const withPhoto = photoSlides(design, values);
@@ -144,6 +147,9 @@ export default function Editor({ id }) {
     }
   }
 
+  // Downloads wait until every salary shown is filled in properly.
+  const salaryProblems = visibleFields(design, values).filter((f) => f.type === "salary" && salaryError(values, f.key));
+
   return (
     <div className="editor">
       <div className="panel">
@@ -165,10 +171,13 @@ export default function Editor({ id }) {
               {withPhoto.length > 1 ? (withPhoto.includes(slide) ? `Shuffle photo (slide ${slide + 1})` : "Shuffle photos") : "Shuffle photo"}
             </button>
           ) : null}
-          <button type="button" className="btn btn-primary" onClick={multi ? downloadPdf : downloadPng} disabled={!!busy}>
+          <button type="button" className="btn btn-primary" onClick={multi ? downloadPdf : downloadPng} disabled={!!busy || salaryProblems.length > 0}>
             {busy || (multi ? "Download PDF" : "Download PNG")}
           </button>
         </div>
+        {salaryProblems.length ? (
+          <div className="hint warn">Check the {salaryProblems.length > 1 ? "salaries" : "salary"} before downloading{multi ? ` (${salaryProblems.map((f) => (f.key.match(/^j(\d+)_/) ? `Job ${f.key.match(/^j(\d+)_/)[1]}` : "salary")).join(", ")})` : ""}.</div>
+        ) : null}
       </div>
 
       <div className="preview">
@@ -222,7 +231,58 @@ function toJpeg(blob) {
   });
 }
 
+// Salary: pick the type, then only the right kind of number can be typed in.
+function SalaryField({ f, values, set, onFocus }) {
+  const k = f.key;
+  const type = values[`${k}Type`] || "annual";
+  const err = salaryError({ ...values, [`${k}Type`]: type }, k);
+  const [touched, setTouched] = useState(false);
+  const show = (d) => (d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "");
+  const money = (key, ph) => (
+    <span className="sal-box">
+      <span className="sal-pre">£</span>
+      <input className="input" inputMode="numeric" placeholder={ph} value={show(values[key] || "")} onFocus={onFocus}
+        onBlur={() => setTouched(true)} onChange={(e) => set(key, moneyDigits(e.target.value, 6))} />
+    </span>
+  );
+  return (
+    <div className="row">
+      <label className="label"><span>{f.label}</span></label>
+      <div className="sal-types" role="radiogroup" aria-label="Salary type">
+        {SALARY_TYPES.map(([id, label]) => (
+          <button key={id} type="button" role="radio" aria-checked={type === id} className={"sal-type" + (type === id ? " on" : "")}
+            onClick={() => { set(`${k}Type`, id); onFocus(); }}>{label}</button>
+        ))}
+      </div>
+      {type === "annual" ? (
+        <div className="sal-row">{money(`${k}From`, "45,000")}<span className="sal-mid">–</span>{money(`${k}To`, "55,000")}</div>
+      ) : type === "daily" ? (
+        <div className="sal-row">
+          <span className="sal-box"><span className="sal-pre">£</span>
+            <input className="input" inputMode="numeric" placeholder="450" value={values[`${k}Rate`] || ""} onFocus={onFocus}
+              onBlur={() => setTouched(true)} onChange={(e) => set(`${k}Rate`, moneyDigits(String(e.target.value).split(".")[0], 4))} /></span>
+          <span className="sal-post">per day</span>
+        </div>
+      ) : type === "hourly" ? (
+        <div className="sal-row">
+          <span className="sal-box"><span className="sal-pre">£</span>
+            <input className="input" inputMode="decimal" placeholder="12.50" value={values[`${k}Rate`] || ""} onFocus={onFocus}
+              onBlur={() => { setTouched(true); const n = parseFloat(rateText(values[`${k}Rate`])); if (n > 0) set(`${k}Rate`, n.toFixed(2)); }}
+              onChange={(e) => set(`${k}Rate`, rateText(e.target.value))} /></span>
+          <span className="sal-post">ph</span>
+        </div>
+      ) : null}
+      <div className="hint">
+        {type === "annual" ? "Whole pounds. Leave the second box empty for a single figure. " : ""}
+        Shows as: <strong>{formatSalary({ ...values, [`${k}Type`]: type }, k)}</strong>
+      </div>
+      {err && (touched || type === "competitive") ? <div className="hint warn">{err}</div> : null}
+    </div>
+  );
+}
+
 function Field({ f, values, set, onFocus }) {
+  if (f.type === "salary") return <SalaryField f={f} values={values} set={set} onFocus={onFocus} />;
   const v = values[f.key] || "";
   const disabled = f.toggle && values[f.toggle.key] === "1";
   let count = null;

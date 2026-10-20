@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getDesign, slideCount, photoSlides, jobCount } from "../../../../lib/designs";
 import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
-import { fileName, salaryText } from "../../../../lib/text";
+import { fileName, formatSalary } from "../../../../lib/text";
 import { isStockPhoto } from "../../../../lib/stock";
 import renderJobAd from "../../../../lib/render/job-ad";
 import { Cover, TextSlide, ContactSlide } from "../../../../lib/render/job-slides";
@@ -82,7 +82,7 @@ const RENDERERS = {
     const consultant = g("consultant") || String(v.j1_consultant || "").trim();
     const phone = g("phone") || (g("consultant") ? "" : String(v.j1_phone || "").trim());
     const job = { division: g("division"), title: g("title"), location: g("location"),
-      salaryText: salaryText(g("salary"), v[`j${a.slide}_hideSalary`] === "1"), consultant, phone };
+      salaryText: formatSalary(v, `j${a.slide}_salary`), consultant, phone };
     return <VacancyJob job={job} n={a.slide} jobs={jobs} photo={a.photo} overlay={a.asset("vacancies/job-overlay.png")} />;
   },
 };
@@ -115,7 +115,7 @@ export async function GET(req, { params }) {
   const { searchParams, origin } = new URL(req.url);
   const isSample = searchParams.get("sample") === "1";
   const values = isSample ? { ...design.sample } : Object.fromEntries(searchParams.entries());
-  values.salaryText = salaryText(values.salary, values.hideSalary === "1");
+  values.salaryText = formatSalary(values, "salary");
   const count = slideCount(design, values);
   const slide = Math.max(0, Math.min(count - 1, parseInt(searchParams.get("slide") || "0", 10) || 0));
 
