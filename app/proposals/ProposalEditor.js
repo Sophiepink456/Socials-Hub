@@ -6,6 +6,7 @@ import { EXTRA_STYLES, styleById, defaultsFor, wordingFields } from "../../lib/p
 import {
   APPROACH, CONSULTANTS, LIMITS, PHOTO_SLOTS, STOCK_PHOTOS, blankProposal, emailFor, normalise, PAYMENT_TERMS, PAYMENT_NOTE,
   assignPhotos, photoFits, textFields, fieldName, SECTIONS,
+  MAX_ROLES, roleProfileLimit, blankRole,
 } from "../../lib/proposal/data";
 
 import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom, LinesBox } from "./kit";
@@ -394,16 +395,69 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           {aboutState.draft ? <div className="hint" style={{ whiteSpace: "pre-line", background: "#f6f6f6", padding: 10, borderRadius: 8 }}>{aboutState.draft}</div> : null}
         </Section>
 
-        <Section title="5. Role Profile" open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
-          <Text label="Job title" path="jobTitle" max={LIMITS.jobTitle} page="role" {...f} />
-          <Text label="Location" path="location" max={LIMITS.location} page="role" placeholder="e.g. Barnsley, 3–4 days per week on site" {...f} />
-          <Text label="Reporting to" path="reportingTo" max={LIMITS.reportingTo} page="role" {...f} />
-          {!p.noDirectReports ? <Text label="Direct reports" path="directReports" max={LIMITS.directReports} page="role" {...f} /> : null}
-          <Check label="No direct reports (remove this line)" path="noDirectReports" page="role" {...f} />
-          <Text label="Salary" path="salary" max={LIMITS.salary} page="role" placeholder="e.g. £90,000–£110,000" {...f} />
-          <Text label="Contract" path="contract" max={LIMITS.contract} page="role" placeholder="e.g. Permanent, full-time" {...f} />
-          <LinesBox label="Benefits" path="benefits" max={LIMITS.benefits} each={LIMITS.benefit} placeholder="Benefit" page="role" {...f} hint={benefits.filter((b) => String(b).trim()).length > 4 ? "Shown in two columns." : ""} />
-          <Text label="Role profile" path="roleProfile" max={LIMITS.roleProfile} multiline rows={12} page="role" {...f} hint="Leave a blank line between paragraphs." />
+        <Section title="5. Role Profile" open={open === "role"} onToggle={() => toggle("role")} done={p.multiRole ? (p.roles || []).every((r) => r.jobTitle && r.profile) : !!(p.jobTitle && p.roleProfile)}>
+          <div className="row">
+            <label className="check">
+              <input type="checkbox" checked={!!p.multiRole} onChange={(e) => {
+                const on = e.target.checked;
+                set("multiRole", on);
+                // First time: the role already filled in becomes Role 1, with an empty Role 2.
+                if (on && !(p.roles || []).length) {
+                  set("roles", [{ jobTitle: p.jobTitle, location: p.location, reportingTo: p.reportingTo, directReports: p.directReports, noDirectReports: !!p.noDirectReports,
+                    salary: p.salary, contract: p.contract, profile: String(p.roleProfile || "").slice(0, roleProfileLimit(2)) }, blankRole()]);
+                }
+                setPage("role");
+              }} />
+              Multiple roles
+            </label>
+            <div className="hint">Tick if the proposal covers more than one role. The page becomes “The Roles” and “Role Profiles”, with the details below for each role.</div>
+          </div>
+          {p.multiRole ? (
+            <>
+              {(p.roles || []).map((r, i) => {
+                const lim = roleProfileLimit((p.roles || []).length);
+                return (
+                  <div key={i} className="subgroup">
+                    <div className="row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <strong>Role {i + 1}</strong>
+                      {(p.roles || []).length > 2 ? <button type="button" className="link" onClick={() => { set("roles", p.roles.filter((_, j) => j !== i)); setPage("role"); }}>Remove role</button> : null}
+                    </div>
+                    <Text label="Job title" path={`roles.${i}.jobTitle`} max={LIMITS.jobTitle} page="role" {...f} />
+                    <Text label="Location" path={`roles.${i}.location`} max={LIMITS.location} page="role" placeholder="e.g. Barnsley, 3–4 days per week on site" {...f} />
+                    <Text label="Reporting to" path={`roles.${i}.reportingTo`} max={LIMITS.reportingTo} page="role" {...f} />
+                    {!r.noDirectReports ? <Text label="Direct reports" path={`roles.${i}.directReports`} max={LIMITS.directReports} page="role" {...f} /> : null}
+                    <Check label="No direct reports (remove this line)" path={`roles.${i}.noDirectReports`} page="role" {...f} />
+                    <Text label="Salary" path={`roles.${i}.salary`} max={LIMITS.salary} page="role" placeholder="e.g. £90,000–£110,000" {...f} />
+                    <Text label="Contract" path={`roles.${i}.contract`} max={LIMITS.contract} page="role" placeholder="e.g. Permanent, full-time" {...f} />
+                    <Text label="Role profile" path={`roles.${i}.profile`} max={lim} multiline rows={6} page="role" {...f}
+                      hint={`Shown under the role title on the right. Up to ${lim.toLocaleString("en-GB")} characters with ${(p.roles || []).length} roles.`} />
+                  </div>
+                );
+              })}
+              {(p.roles || []).length < MAX_ROLES ? (
+                <button type="button" className="btn btn-ghost btn-small" style={{ marginBottom: 16 }} onClick={() => {
+                  const n = p.roles.length + 1;
+                  // More roles share the space, so the profiles get a smaller limit.
+                  set("roles", [...p.roles.map((r) => ({ ...r, profile: String(r.profile || "").slice(0, roleProfileLimit(n)) })), blankRole()]);
+                  setPage("role");
+                }}>+ Add another role</button>
+              ) : null}
+              {(p.roles || []).length < MAX_ROLES ? <div className="hint" style={{ marginTop: -8, marginBottom: 16 }}>Adding a role shortens each role profile to fit: {[2, 3, 4].map((n) => `${n} roles ${roleProfileLimit(n)}`).join(", ")} characters.</div> : null}
+              <LinesBox label="Benefits (all roles)" path="benefits" max={LIMITS.benefits} each={LIMITS.benefit} placeholder="Benefit" page="role" {...f} hint={benefits.filter((b) => String(b).trim()).length > 4 ? "Shown in two columns." : ""} />
+            </>
+          ) : (
+            <>
+              <Text label="Job title" path="jobTitle" max={LIMITS.jobTitle} page="role" {...f} />
+              <Text label="Location" path="location" max={LIMITS.location} page="role" placeholder="e.g. Barnsley, 3–4 days per week on site" {...f} />
+              <Text label="Reporting to" path="reportingTo" max={LIMITS.reportingTo} page="role" {...f} />
+              {!p.noDirectReports ? <Text label="Direct reports" path="directReports" max={LIMITS.directReports} page="role" {...f} /> : null}
+              <Check label="No direct reports (remove this line)" path="noDirectReports" page="role" {...f} />
+              <Text label="Salary" path="salary" max={LIMITS.salary} page="role" placeholder="e.g. £90,000–£110,000" {...f} />
+              <Text label="Contract" path="contract" max={LIMITS.contract} page="role" placeholder="e.g. Permanent, full-time" {...f} />
+              <LinesBox label="Benefits" path="benefits" max={LIMITS.benefits} each={LIMITS.benefit} placeholder="Benefit" page="role" {...f} hint={benefits.filter((b) => String(b).trim()).length > 4 ? "Shown in two columns." : ""} />
+              <Text label="Role profile" path="roleProfile" max={LIMITS.roleProfile} multiline rows={12} page="role" {...f} hint="Leave a blank line between paragraphs." />
+            </>
+          )}
         </Section>
 
         <Section title="6. Our Approach" open={open === "approach"} onToggle={() => toggle("approach")} done>
