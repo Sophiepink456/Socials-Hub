@@ -240,8 +240,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proposal: p, submitter: submit, draft: draft ? { id: draft.id, k: draft.k } : null }),
       });
-      const r = await res.json();
-      if (!res.ok) throw new Error(r.error);
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(r.error || (res.status === 401 ? "You've been signed out of the hub. Refresh the page, sign in again, then press Send." : `Sorry, it didn't send (error ${res.status}). Try again in a moment.`));
       setSubmit(null);
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
       setDone("Sent for proof-reading. You'll get the finished PDF by email once it's been checked.");
