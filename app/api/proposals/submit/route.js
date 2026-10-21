@@ -16,6 +16,6 @@ export async function POST(req) {
     return Response.json({ ok: true, id: rec.id });
   } catch (e) {
     console.error("submit failed", e);
-    return Response.json({ error: "Sorry, it didn't send. Try again in a moment." }, { status: 500 });
+    return Response.json({ error: `Sorry, it didn't send (${String((e && e.message) || e).slice(0, 200)}). Try again in a moment.` }, { status: 500 });
   }
 }
