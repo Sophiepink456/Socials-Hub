@@ -520,7 +520,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         </Section>
 
         <Section title={`${p.nda ? 9 : 10}. Terms & Fees`} open={open === "terms"} onToggle={() => toggle("terms")} done>
-          <Text label="Fee" path="fee" max={LIMITS.fee} page="terms" placeholder="25%" {...f} hint="Shown as “Fee | 25% + VAT of package.”" />
+          <Text label="Fee line" path="feeLine" max={LIMITS.feeLine} page="terms" placeholder="Fee | 25% + VAT of package" {...f} hint="Type it as you want it to read. The full stop is added for you." />
+          {p.feeLine !== "Fee | 25% + VAT of package" ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("feeLine", "Fee | 25% + VAT of package")}>Reset to standard wording</button> : null}
           <Text label="Payment terms" path="paymentTerms" max={LIMITS.paymentTerms} multiline rows={4} page="terms" {...f} hint="One bullet point per line (up to 5)." />
           {p.paymentTerms !== PAYMENT_TERMS ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set("paymentTerms", PAYMENT_TERMS)}>Reset to standard wording</button> : null}
           <Text label="Note under the payment terms" path="paymentNote" max={LIMITS.paymentNote} multiline rows={2} page="terms" {...f} optional />
