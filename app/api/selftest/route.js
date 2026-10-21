@@ -15,6 +15,26 @@ export async function GET(req) {
       return Response.json({ render: r.status, type: r.headers.get("content-type"), bytes: buf.byteLength, text: r.status >= 400 ? new TextDecoder().decode(buf).slice(0, 500) : "" });
     } catch (e) { return Response.json({ renderError: String(e && e.stack || e).slice(0, 1500) }); }
   }
+  if (searchParams.get("lh")) {
+    const t = Date.now();
+    try {
+      const { renderLetterheadPdf } = await import("../../../lib/server/letterheadPdf");
+      const pdf = await renderLetterheadPdf({ kind: "letterhead", brand: searchParams.get("lh"), cover: { title: "Self test" }, blocks: [{ type: "p", text: "Hello" }] }, origin);
+      return Response.json({ lhBytes: pdf.length, ms: Date.now() - t });
+    } catch (e) { return Response.json({ lhError: String(e && e.stack || e).slice(0, 1500), ms: Date.now() - t }); }
+  }
+  if (searchParams.get("store")) {
+    try {
+      const st = await import("../../../lib/server/store");
+      const p = `selftest/${st.randomId(4)}.txt`;
+      const url = await st.putFile(p, Buffer.from("ok"), "text/plain");
+      const back = await st.readFile(p);
+      await st.removeFiles([p]).catch(() => {});
+      const { getSettings } = await import("../../../lib/server/settings");
+      const s = await getSettings();
+      return Response.json({ put: url, readBack: back ? String(back.length || back.byteLength || "yes") : null, settings: !!s, proofreaders: (String(s.proofreaders || "").split(/[,;\s]+/).filter(Boolean).length), zapier: !!process.env.ZAPIER_HOOK_URL });
+    } catch (e) { return Response.json({ storeError: String(e && e.stack || e).slice(0, 1500) }); }
+  }
   if (searchParams.get("pdf")) {
     const t = Date.now();
     try {

@@ -4,7 +4,7 @@ const nextConfig = {
     // Ship the font files with the image renderer (it reads them from disk).
     outputFileTracingIncludes: {
       "/api/render/[id]": ["./app/fonts/**/*"],
-      "/api/selftest": ["./app/fonts/**/*", "./node_modules/@sparticuz/chromium/bin/**/*"],
+      "/api/selftest": ["./app/fonts/**/*", "./node_modules/@sparticuz/chromium/bin/**/*", "./public/letterhead/footer.png", "./public/letterhead/footer-standard.png"],
       // The headless Chrome binary used to print proposals to PDF.
       "/api/proposals/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
       "/api/slt/pdf": ["./node_modules/@sparticuz/chromium/bin/**/*"],
