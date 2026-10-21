@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 // Save a consultant's draft (POST) or open it again from its link (GET ?id=&k=).
 import { saveDraft, loadDraft } from "../../../../lib/server/drafts";
 import { hasStore } from "../../../../lib/server/store";
@@ -17,7 +18,7 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "Bad request" }, { status: 400 }); }
   try {
-    return Response.json(await saveDraft(body, new URL(req.url).origin));
+    return Response.json(await saveDraft(body, siteOrigin(req)));
   } catch (e) {
     console.error("draft save failed", e);
     return Response.json({ error: "Couldn't save the draft. Try again in a moment." }, { status: 500 });

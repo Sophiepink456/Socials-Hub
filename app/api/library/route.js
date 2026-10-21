@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../lib/server/origin";
 // Saved Docs: GET ?t=<private link token> = that person's signed-off docs;
 // POST { email } = email them their private link.
 import { myDocs, emailFromToken, emailLink } from "../../../lib/server/library";
@@ -22,7 +23,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const { email } = await req.json();
-    await emailLink(email, new URL(req.url).origin);
+    await emailLink(email, siteOrigin(req));
     return Response.json({ ok: true });
   } catch (e) {
     return Response.json({ error: e.message || "Couldn't send the link." }, { status: 400 });

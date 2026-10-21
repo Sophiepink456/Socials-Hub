@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 import { checkPasscode, getSettings } from "../../../../lib/server/settings";
 import { sendEmail, emailHtml } from "../../../../lib/server/mail";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req) {
   if (!checkPasscode(req)) return Response.json({ error: "Wrong passcode." }, { status: 401 });
   const s = await getSettings();
-  const origin = new URL(req.url).origin;
+  const origin = siteOrigin(req);
   try {
     await sendEmail({
       to: s.proofreaders,

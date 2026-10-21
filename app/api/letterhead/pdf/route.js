@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 // Print a Powered by Elevation document to PDF (lib/server/letterheadPdf.js).
 import { renderLetterheadPdf } from "../../../../lib/server/letterheadPdf";
 import { normaliseDoc, pdfName } from "../../../../lib/letterhead/doc";
@@ -12,7 +13,7 @@ export async function POST(req) {
   const doc = normaliseDoc(body && body.doc);
   if (!doc.blocks.length && !doc.cover.on) return new Response("Nothing to print", { status: 400 });
   try {
-    const bytes = await renderLetterheadPdf(doc, new URL(req.url).origin);
+    const bytes = await renderLetterheadPdf(doc, siteOrigin(req));
     return new Response(bytes, {
       headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfName(doc)}"`, "Cache-Control": "no-store" },
     });

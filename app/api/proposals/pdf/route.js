@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 // Download the proposal as a PDF (no saving).
 import { normaliseDoc as normalise } from "../../../../lib/docs";
 import { renderPdf, pdfName } from "../../../../lib/proposal/pdf";
@@ -13,7 +14,7 @@ export async function POST(req) {
   const proposal = normalise(body && body.proposal);
   try {
     const s = await getSettings();
-    const pdf = await renderPdf(proposal, new URL(req.url).origin, pageContext(s));
+    const pdf = await renderPdf(proposal, siteOrigin(req), pageContext(s));
     return new Response(pdf, {
       headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfName(proposal)}"`, "Cache-Control": "no-store" },
     });

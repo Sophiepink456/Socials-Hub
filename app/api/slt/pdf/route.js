@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 // Download an SLT document as a PDF (the SLT password is checked in middleware.js).
 import { renderSltPdf } from "../../../../lib/server/sltPdf";
 import { normaliseTargets, targetsFileName } from "../../../../lib/slt/targets";
@@ -19,7 +20,7 @@ export async function POST(req) {
   if (!k) return new Response("Unknown document", { status: 400 });
   const data = k[0](body.data);
   try {
-    const bytes = await renderSltPdf(body.kind, data, new URL(req.url).origin);
+    const bytes = await renderSltPdf(body.kind, data, siteOrigin(req));
     const name = k[1](data);
     return new Response(bytes, {
       headers: {

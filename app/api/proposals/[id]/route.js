@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 // Read or act on a saved proposal. ?k= is the proof-reader's key, ?c= the final checker's.
 import { loadRecord, publicView, editorAction, checkerAction } from "../../../../lib/server/proposals";
 
@@ -28,7 +29,7 @@ export async function POST(req, { params }) {
   const rec = found && !found.removed ? found : null;
   if (!rec) return Response.json({ error: "Not found" }, { status: 404 });
   const role = roleFor(rec, body.k, body.c);
-  const origin = new URL(req.url).origin;
+  const origin = siteOrigin(req);
   try {
     if (role === "editor") {
       const { rec: out } = await editorAction(rec, body.action, body.data, origin, { to: body.to, note: body.note });

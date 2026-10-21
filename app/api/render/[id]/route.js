@@ -1,3 +1,4 @@
+import { siteOrigin } from "../../../../lib/server/origin";
 import { ImageResponse } from "next/og";
 import { getDesign, slideCount, photoSlides, jobCount } from "../../../../lib/designs";
 import { randomPhoto, photoPool, headshotFor } from "../../../../lib/photos";
@@ -112,7 +113,8 @@ export async function GET(req, { params }) {
   const render = RENDERERS[params.id];
   if (!design || !render) return new Response("Unknown design", { status: 404 });
 
-  const { searchParams, origin } = new URL(req.url);
+  const { searchParams } = new URL(req.url);
+  const origin = siteOrigin(req);
   const isSample = searchParams.get("sample") === "1";
   const values = isSample ? { ...design.sample } : Object.fromEntries(searchParams.entries());
   values.salaryText = formatSalary(values, "salary");
