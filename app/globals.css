@@ -434,3 +434,35 @@ a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
 .pol-btn { flex: none; background: none; border: 1px solid #3a3a3a; color: #fff; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; }
 .pol-btn:hover { background: #fff; color: #000; border-color: #fff; }
 .pol-del:hover { background: #ff8a80; border-color: #ff8a80; color: #000; }
+/* Car wash bookings (/bookings/car-wash) */
+.cw-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 24px; }
+.cw-label { font-weight: 600; font-size: 15px; }
+.cw-hint { color: rgba(255,255,255,.6); font-size: 14px; }
+.cw-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+@media (max-width: 1200px) { .cw-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .cw-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .cw-grid { grid-template-columns: 1fr; } }
+.cw-day { background: #151515; border: 1px solid #2a2a2a; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; }
+.cw-day.next { border-color: var(--lime); }
+.cw-day.off { opacity: .55; }
+.cw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cw-head h3 { font-size: 19px; font-weight: 500; margin: 0; line-height: 1.25; }
+.cw-tag { flex: none; font-size: 12px; font-weight: 600; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 3px 9px; }
+.cw-tag.on { background: var(--lime); border-color: var(--lime); color: #000; }
+.cw-count { margin: 6px 0 12px; font-size: 13px; color: var(--lime); }
+.cw-day.off .cw-count { display: none; }
+.cw-list { margin: 0; padding: 0 0 0 22px; font-size: 15px; }
+.cw-list li { padding: 5px 0; border-bottom: 1px solid #232323; }
+.cw-list li > span { display: inline-block; max-width: calc(100% - 80px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.cw-list li.cw-empty { color: rgba(255,255,255,.3); }
+.cw-sub { margin: 14px 0 4px; font-size: 13px; color: rgba(255,255,255,.6); font-weight: 600; }
+.cw-reserve { color: rgba(255,255,255,.75); }
+.cw-x { float: right; background: none; border: 0; color: rgba(255,255,255,.55); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 2px 0; }
+.cw-x:hover { color: #ff8a80; }
+.cw-book { margin-top: 16px; background: var(--lime); color: #000; border: 0; border-radius: 999px; padding: 11px 16px; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; }
+.cw-book.alt { background: none; color: #fff; border: 1px solid rgba(255,255,255,.5); }
+.cw-book:disabled { opacity: .5; cursor: default; }
+.cw-admin-day { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.cw-admin-row { margin-top: 12px; }
+.cw-small { flex: 0 0 auto; width: 180px; }
+.cw-small[type="date"] { color-scheme: dark; }
