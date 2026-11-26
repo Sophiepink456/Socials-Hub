@@ -25,8 +25,8 @@ const AREAS = [
   {
     id: "bookings",
     title: "Bookings",
-    blurb: "Make and manage bookings.",
-    href: null,
+    blurb: "Car wash, Seb and Sarah-Lee Training bookings.",
+    href: "/bookings",
   },
 ];
 
