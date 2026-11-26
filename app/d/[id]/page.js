@@ -7,7 +7,7 @@ export default function DesignPage({ params }) {
   if (!design) notFound();
   return (
     <main className="wrap">
-      <a href="/" className="back">← All designs</a>
+      <a href="/marketing" className="back">← All designs</a>
       <h1 className="h1">{design.title}<span className="g">.</span></h1>
       <p className="lede">Fill in the details. The preview updates as you type.</p>
       <Editor id={design.id} />

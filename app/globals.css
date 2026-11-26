@@ -350,3 +350,40 @@ textarea.input { resize: vertical; line-height: 1.45; }
 .sal-box .input { padding-left: 26px; width: 100%; }
 .sal-pre { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .sal-mid, .sal-post { color: var(--muted); white-space: nowrap; }
+
+/* ---------- Elevation Hub front page (app/page.js) ---------- */
+@font-face { font-family: "Google Sans Flex"; src: url("/letterhead/GoogleSansFlex.woff2") format("woff2"); font-weight: 100 1000; font-display: swap; }
+body:has(.eh) { background: #000; }
+body:has(.eh) > .bar { display: none; }
+.eh { --lime: #BAE400; background: #000; color: #fff; min-height: 100vh; font-family: "Google Sans Flex", system-ui, sans-serif; }
+.eh .g { color: var(--lime); }
+.eh-hero { position: relative; min-height: min(78vh, 760px); display: flex; flex-direction: column; overflow: hidden; background: #111; }
+.eh-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.eh-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 40%, rgba(0,0,0,.6) 85%, #000 100%); }
+.eh-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 28px clamp(20px, 3vw, 40px); }
+.eh-logo { height: 44px; width: auto; color: #fff; display: block; }
+.eh-pill { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.7); border-radius: 999px; padding: 10px 20px; font-size: 15px; font-weight: 500; transition: background .2s, color .2s; }
+.eh-pill:hover { background: #fff; color: #000; }
+.eh-hero-text { position: relative; z-index: 1; margin-top: auto; padding: 0 clamp(20px, 3vw, 40px) clamp(32px, 5vw, 64px); }
+.eh-word { margin: 0; font-weight: 500; line-height: 1; }
+.eh-wordmark { display: block; width: 100%; height: auto; color: #fff; }
+.eh-hub { display: block; text-align: right; font-size: clamp(40px, 9vw, 132px); letter-spacing: -0.03em; margin-top: clamp(4px, 1vw, 14px); }
+.eh-main { margin: 0 auto; padding: clamp(40px, 6vw, 80px) clamp(20px, 3vw, 40px) 100px; }
+.eh-intro h2 { font-size: clamp(30px, 4vw, 48px); font-weight: 500; letter-spacing: -0.02em; margin: 0 0 10px; }
+.eh-intro p { color: rgba(255,255,255,.7); font-size: 18px; margin: 0 0 40px; }
+.eh-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1000px) { .eh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .eh-grid { grid-template-columns: 1fr; } .eh-logo { height: 34px; } .eh-hero { min-height: 56vh; } .eh-tile { min-height: 200px; } }
+.eh-tile { position: relative; display: flex; flex-direction: column; min-height: 280px; padding: 28px; border-radius: 20px; background: #151515; border: 1px solid #2a2a2a; color: #fff; text-decoration: none; transition: background .25s, border-color .25s, transform .25s; }
+a.eh-tile:hover { background: var(--lime); border-color: var(--lime); color: #000; transform: translateY(-4px); }
+a.eh-tile:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+.eh-num { font-size: 14px; color: var(--lime); font-weight: 600; letter-spacing: .05em; }
+a.eh-tile:hover .eh-num { color: #000; }
+.eh-tile h3 { font-size: 28px; font-weight: 500; letter-spacing: -0.02em; margin: 18px 0 10px; }
+.eh-tile p { margin: 0; font-size: 15px; line-height: 1.5; color: inherit; opacity: .75; }
+.eh-go { margin-top: auto; padding-top: 24px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+.eh-go svg { width: 20px; height: 20px; transition: transform .25s; }
+a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
+.eh-go.soon { color: rgba(255,255,255,.5); font-weight: 500; }
+.eh-soon { opacity: .6; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .eh-video { display: none; } .eh-hero { background: #111 url("https://www.elevationrecruitmentgroup.com/wp-content/uploads/2026/11/erg_showreel_first_frame.jpg") center/cover; } }

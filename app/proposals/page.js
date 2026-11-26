@@ -22,7 +22,7 @@ export default function ProposalsPage({ searchParams }) {
   ];
   return (
     <main className="wrap">
-      <a href="/" className="back">← Marketing Hub</a>
+      <a href="/marketing" className="back">← Marketing Hub</a>
       <h1 className="h1">Proposals & Candidate Packs<span className="g">.</span></h1>
       <p className="lede">What would you like to put together?</p>
       <div className="tools" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>

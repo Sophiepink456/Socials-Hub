@@ -23,7 +23,7 @@ export default async function SltPage() {
           <p className="lede">{ok ? "Confidential documents. Fill one in and download the PDF – nothing is saved on the hub." : "This folder is password protected."}</p>
         </div>
         <div className="actions" style={{ margin: 0 }}>
-          <a className="btn btn-ghost" href="/">← Back to the hub</a>
+          <a className="btn btn-ghost" href="/marketing">← Back to the hub</a>
           {ok ? <a className="btn btn-ghost" href="/api/slt/lock">Lock</a> : null}
         </div>
       </div>

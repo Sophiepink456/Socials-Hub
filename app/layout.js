@@ -19,12 +19,14 @@ export default function RootLayout({ children }) {
     <html lang="en" className={area.variable}>
       <body>
         <header className="bar">
-          <a href="/" className="brand">
+          <a href="/marketing" className="brand">
             <span className="dot" aria-hidden="true" />
             Marketing Hub
           </a>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/elevation-logo.png" alt="Elevation Recruitment Group" className="bar-logo" />
+          <a href="/" title="Elevation Hub home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/elevation-logo.png" alt="Elevation Hub home" className="bar-logo" />
+          </a>
         </header>
         {children}
       </body>

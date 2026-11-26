@@ -100,7 +100,7 @@ export default function RequestForm() {
         {done.failed.length ? <p className="hint warn">These files didn’t attach, so please email them to the marketing team: {done.failed.join(", ")}</p> : null}
         <div className="actions">
           <button type="button" className="btn btn-primary" onClick={() => { setDone(null); setNow(new Date()); }}>Make another request</button>
-          <a className="btn btn-ghost" href="/">Back to the hub</a>
+          <a className="btn btn-ghost" href="/marketing">Back to the hub</a>
         </div>
       </div>
     );
