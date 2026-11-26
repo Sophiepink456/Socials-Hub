@@ -14,6 +14,13 @@ const TOOLS = [
     external: true,
     note: "Opens in a new tab and uses its own team password.",
   },
+  {
+    id: "external-policies",
+    title: "External Policies",
+    blurb: "Elevation's policies and DPIAs for clients, tenders and PSLs, ready to open or download.",
+    tags: ["Policies", "DPIAs"],
+    href: "/commercial/policies",
+  },
 ];
 
 function Arrow({ external }) {
