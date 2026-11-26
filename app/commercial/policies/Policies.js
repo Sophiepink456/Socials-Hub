@@ -101,23 +101,9 @@ export default function Policies() {
     <div className="pol">
       <div className="pol-bar">
         <input className="pol-search" type="search" placeholder="Search policies" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search policies" />
-        <button type="button" className="eh-pill pol-manage" onClick={() => setManage(!manage)}>{manage ? "Done" : "Add or remove"}</button>
       </div>
 
-      {manage && (
-        <div className="pol-admin">
-          <p>Marketing team only: enter the Marketing Team Access passcode, then pick PDF or Word files. A file with the same name as one already here replaces it.</p>
-          <div className="pol-admin-row">
-            <input className="pol-search" type="password" placeholder="Passcode" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Marketing Team Access passcode" autoComplete="off" />
-            <label className={"pol-upload" + (!pass || busy ? " off" : "")}>
-              {busy || "Choose files to add"}
-              <input ref={input} type="file" multiple accept=".pdf,.doc,.docx" disabled={!pass || !!busy} onChange={(e) => upload(e.target.files)} hidden />
-            </label>
-          </div>
-        </div>
-      )}
-      {msg && <p className="pol-msg">{msg}</p>}
-      {err && <p className="pol-err">{err}</p>}
+      {err && !manage && <p className="pol-err">{err}</p>}
 
       {files === null ? <p className="pol-empty">Loading…</p>
         : !files.length ? <p className="pol-empty">No policies here yet.</p>
@@ -128,6 +114,26 @@ export default function Policies() {
             <Group title="Data Protection Impact Assessments (DPIAs)" files={dpia} manage={manage} onRemove={remove} />
           </>
         )}
+
+      <div className="pol-foot">
+        <button type="button" className="pol-manage" onClick={() => { setManage(!manage); setMsg(""); setErr(""); }}>
+          {manage ? "Done" : "Marketing team: add or remove policies"}
+        </button>
+        {manage && (
+          <div className="pol-admin">
+            <p>Marketing team only: enter the Marketing Team Access passcode, then pick PDF or Word files. A file with the same name as one already here replaces it. Remove buttons appear next to each policy above.</p>
+            <div className="pol-admin-row">
+              <input className="pol-search" type="password" placeholder="Passcode" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Marketing Team Access passcode" autoComplete="off" />
+              <label className={"pol-upload" + (!pass || busy ? " off" : "")}>
+                {busy || "Choose files to add"}
+                <input ref={input} type="file" multiple accept=".pdf,.doc,.docx" disabled={!pass || !!busy} onChange={(e) => upload(e.target.files)} hidden />
+              </label>
+            </div>
+            {msg && <p className="pol-msg">{msg}</p>}
+            {err && <p className="pol-err">{err}</p>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

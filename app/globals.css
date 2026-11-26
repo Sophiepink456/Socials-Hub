@@ -404,7 +404,13 @@ a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
 .pol-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 28px; flex-wrap: wrap; }
 .pol-search { flex: 1 1 280px; max-width: 460px; background: #151515; border: 1px solid #2a2a2a; color: #fff; border-radius: 999px; padding: 12px 20px; font: inherit; font-size: 15px; }
 .pol-search:focus { outline: none; border-color: var(--lime); }
-.pol-manage { background: none; cursor: pointer; font: inherit; font-size: 15px; }
+.pol-foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid #222; }
+.pol-manage { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 14px; color: rgba(255,255,255,.5); text-decoration: underline; }
+.pol-manage:hover { color: var(--lime); }
+.pol-foot .pol-admin { margin: 16px 0 0; }
+.pol-admin .pol-msg, .pol-admin .pol-err { margin: 14px 0 0; }
+.pol-admin .pol-msg { color: var(--lime); }
+.pol-admin .pol-err { color: #ff8a80; }
 .pol-admin { background: #151515; border: 1px solid #2a2a2a; border-radius: 16px; padding: 20px 24px; margin-bottom: 28px; }
 .pol-admin p { margin: 0 0 14px; color: rgba(255,255,255,.75); font-size: 15px; }
 .pol-admin-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
