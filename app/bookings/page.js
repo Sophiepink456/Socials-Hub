@@ -6,7 +6,7 @@ export const metadata = { title: "Bookings · Elevation Hub" };
 const BOOKINGS = [
   { id: "car-wash", title: "Car Wash Bookings", blurb: "Book your place for the car wash.", href: "/bookings/car-wash" },
   { id: "seb", title: "Seb Bookings", blurb: "Book time with Seb.", href: null },
-  { id: "sarah-lee-training", title: "Sarah-Lee Training", blurb: "Book a training session with Sarah-Lee.", href: null },
+  { id: "sarah-lee-training", title: "Sarah-Lee Training", blurb: "Book a training session with Sarah-Lee.", href: "/bookings/sarah-lee-training" },
 ];
 
 function Arrow() {
