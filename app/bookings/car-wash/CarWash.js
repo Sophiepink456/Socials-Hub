@@ -69,6 +69,13 @@ export default function CarWash() {
 
   const setting = (s, label) => run(label, () => call("POST", { settings: s }, true));
 
+  const removeDay = (day) => {
+    const n = day.bookings.length;
+    const warn = n ? ` ${n} ${n === 1 ? "person is" : "people are"} booked on it and won't see it any more.` : "";
+    if (!window.confirm(`Remove ${longDate(day.date)} from the page?${warn}`)) return;
+    setting({ removeDate: day.date }, day.date).then(() => setMsg(`${longDate(day.date)} removed. You can put it back at the bottom of the page.`));
+  };
+
   if (!data) return err ? <p className="pol-err">{err}</p> : <p className="pol-empty">Loading…</p>;
   const next = data.dates.find((d) => !d.cancelled);
 
@@ -129,7 +136,7 @@ export default function CarWash() {
                   {day.cancelled
                     ? <button type="button" className="pol-btn" onClick={() => setting({ restore: day.date }, day.date)} disabled={!!busy || !pass}>Car wash is running</button>
                     : <button type="button" className="pol-btn pol-del" onClick={() => setting({ cancel: day.date }, day.date)} disabled={!!busy || !pass}>Not running this date</button>}
-                  {day.extra && <button type="button" className="pol-btn" onClick={() => setting({ removeDate: day.date }, day.date)} disabled={!!busy || !pass}>Remove extra date</button>}
+                  <button type="button" className="pol-btn pol-del" onClick={() => removeDay(day)} disabled={!!busy || !pass}>Remove date</button>
                 </div>
               )}
             </section>
@@ -143,7 +150,7 @@ export default function CarWash() {
         </button>
         {manage && (
           <div className="pol-admin">
-            <p>Enter the Marketing Team Access passcode. Each date above now shows a button to mark it as not running, and Remove buttons on every booking. Use “Add a date” when the car wash comes on a different day (for example a Wednesday instead of the Tuesday). Mark the usual Tuesday as not running too.</p>
+            <p>Enter the Marketing Team Access passcode. Each date above now has “Not running this date” (it stays on the page, greyed out) and “Remove date” (it comes off the page altogether), plus Remove buttons on every booking. Use “Add a date” when the car wash comes on a different day (for example a Wednesday instead of the Tuesday). Mark the usual Tuesday as not running too.</p>
             <div className="pol-admin-row">
               <input className="pol-search" type="password" placeholder="Passcode" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Marketing Team Access passcode" autoComplete="off" />
             </div>
@@ -157,6 +164,19 @@ export default function CarWash() {
               <input id="cw-add" className="pol-search cw-small" type="date" min={data.today} value={newDate} onChange={(e) => setNewDate(e.target.value)} />
               <button type="button" className="pol-btn" onClick={() => setting({ addDate: newDate }, "add").then(() => setNewDate(""))} disabled={!!busy || !pass || !newDate}>Add</button>
             </div>
+            {data.removed && data.removed.length > 0 && (
+              <div className="cw-removed">
+                <p className="cw-label">Removed dates</p>
+                <ul>
+                  {data.removed.map((d) => (
+                    <li key={d}>
+                      <span>{longDate(d)}</span>
+                      <button type="button" className="pol-btn" onClick={() => setting({ putBack: d }, d)} disabled={!!busy || !pass}>Put back</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {msg && <p className="pol-msg">{msg}</p>}
             {err && <p className="pol-err">{err}</p>}
           </div>

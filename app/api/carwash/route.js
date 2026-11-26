@@ -15,7 +15,12 @@ async function state() {
   const today = ukToday();
   const dates = upcomingDates(settings, today);
   const bookings = await listBookings(dates.map((d) => d.date));
-  return { today, capacity: settings.capacity, dates: dates.map((d) => ({ ...d, bookings: bookings[d.date] || [] })) };
+  return {
+    today,
+    capacity: settings.capacity,
+    removed: settings.removed.filter((d) => d >= today).sort(),
+    dates: dates.map((d) => ({ ...d, bookings: bookings[d.date] || [] })),
+  };
 }
 
 export async function GET() {
@@ -31,7 +36,7 @@ export async function POST(req) {
   if (body.settings) {
     if (!checkPasscode(req)) return bad("Wrong Marketing Team Access passcode.", 401);
     const s = await getCarwashSettings();
-    const { capacity, cancel, restore, addDate, removeDate } = body.settings;
+    const { capacity, cancel, restore, addDate, removeDate, putBack } = body.settings;
     if (capacity !== undefined) {
       const n = Math.round(Number(capacity));
       if (!(n >= 1 && n <= 50)) return bad("Places per date must be between 1 and 50.");
@@ -44,8 +49,15 @@ export async function POST(req) {
       if (addDate < ukToday()) return bad("That date has already passed.");
       if (!s.extra.includes(addDate)) s.extra.push(addDate);
       s.cancelled = s.cancelled.filter((d) => d !== addDate);
+      s.removed = s.removed.filter((d) => d !== addDate);
     }
-    if (ok(removeDate)) s.extra = s.extra.filter((d) => d !== removeDate);
+    // Remove a date from the page: a one-off date is dropped; a regular Tuesday is hidden.
+    if (ok(removeDate)) {
+      if (s.extra.includes(removeDate)) s.extra = s.extra.filter((d) => d !== removeDate);
+      else if (!s.removed.includes(removeDate)) s.removed.push(removeDate);
+      s.cancelled = s.cancelled.filter((d) => d !== removeDate);
+    }
+    if (ok(putBack)) s.removed = s.removed.filter((d) => d !== putBack);
     await saveCarwashSettings(s);
     return Response.json(await state());
   }

@@ -466,3 +466,6 @@ a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
 .cw-admin-row { margin-top: 12px; }
 .cw-small { flex: 0 0 auto; width: 180px; }
 .cw-small[type="date"] { color-scheme: dark; }
+.cw-removed { margin-top: 18px; }
+.cw-removed ul { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.cw-removed li { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.8); }
