@@ -19,8 +19,8 @@ const AREAS = [
   {
     id: "commercial",
     title: "Commercial Hub",
-    blurb: "Commercial tools and documents.",
-    href: null,
+    blurb: "Hiring Radar and other commercial tools.",
+    href: "/commercial",
   },
   {
     id: "bookings",

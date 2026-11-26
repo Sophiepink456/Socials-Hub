@@ -387,3 +387,16 @@ a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
 .eh-go.soon { color: rgba(255,255,255,.5); font-weight: 500; }
 .eh-soon { opacity: .6; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .eh-video { display: none; } .eh-hero { background: #111 url("https://www.elevationrecruitmentgroup.com/wp-content/uploads/2026/11/erg_showreel_first_frame.jpg") center/cover; } }
+/* Sub-hub pages (e.g. /commercial) share the front page's look */
+.eh-top-sub { border-bottom: 1px solid #222; }
+.eh-back { color: rgba(255,255,255,.7); text-decoration: none; font-size: 15px; }
+.eh-back:hover { color: var(--lime); }
+.eh-title { font-size: clamp(44px, 7vw, 96px); font-weight: 500; letter-spacing: -0.03em; line-height: 1; margin: 18px 0 14px; }
+.eh-lede { color: rgba(255,255,255,.7); font-size: 18px; margin: 0 0 40px; }
+.eh-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .eh-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .eh-grid-3 { grid-template-columns: 1fr; } }
+.eh-tile h3:first-child { margin-top: 0; }
+.eh-tags { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.eh-tags li { font-size: 13px; border: 1px solid currentColor; border-radius: 999px; padding: 4px 10px; opacity: .7; }
+.eh-note { margin-top: 8px; font-size: 13px; opacity: .55; }
