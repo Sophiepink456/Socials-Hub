@@ -18,6 +18,8 @@ async function state() {
   return {
     today,
     capacity: settings.capacity,
+    start: settings.start,
+    everyWeeks: settings.everyWeeks,
     removed: settings.removed.filter((d) => d >= today).sort(),
     dates: dates.map((d) => ({ ...d, bookings: bookings[d.date] || [] })),
   };
@@ -36,13 +38,20 @@ export async function POST(req) {
   if (body.settings) {
     if (!checkPasscode(req)) return bad("Wrong Marketing Team Access passcode.", 401);
     const s = await getCarwashSettings();
-    const { capacity, cancel, restore, addDate, removeDate, putBack } = body.settings;
+    const { capacity, cancel, restore, addDate, removeDate, putBack, start, everyWeeks } = body.settings;
     if (capacity !== undefined) {
       const n = Math.round(Number(capacity));
       if (!(n >= 1 && n <= 50)) return bad("Places per date must be between 1 and 50.");
       s.capacity = n;
     }
     const ok = (d) => typeof d === "string" && DATE_RE.test(d);
+    if (start !== undefined || everyWeeks !== undefined) {
+      const w = Math.round(Number(everyWeeks ?? s.everyWeeks));
+      if (start !== undefined && !ok(start)) return bad("Pick a start date.");
+      if (!(w >= 1 && w <= 12)) return bad("Weeks apart must be between 1 and 12.");
+      if (start !== undefined) s.start = start;
+      s.everyWeeks = w;
+    }
     if (ok(cancel) && !s.cancelled.includes(cancel)) s.cancelled.push(cancel);
     if (ok(restore)) s.cancelled = s.cancelled.filter((d) => d !== restore);
     if (ok(addDate)) {

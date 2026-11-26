@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { longDate } from "../../../lib/carwash";
+import { longDate, everyText } from "../../../lib/carwash";
 
 const NAME_KEY = "carwash-name";
 const MINE_KEY = "carwash-mine"; // { bookingId: key } for bookings made in this browser
@@ -20,6 +20,8 @@ export default function CarWash() {
   const [pass, setPass] = useState("");
   const [cap, setCap] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [start, setStart] = useState("");
+  const [every, setEvery] = useState("");
 
   async function call(method, body, admin) {
     const r = await fetch("/api/carwash", {
@@ -34,7 +36,7 @@ export default function CarWash() {
       throw new Error(j.error || "Something went wrong. Please try again.");
     }
     if (admin) { try { sessionStorage.setItem(PASS_KEY, pass); } catch {} }
-    if (j.dates) { setData(j); setCap(String(j.capacity)); }
+    if (j.dates) { setData(j); setCap(String(j.capacity)); setStart(j.start); setEvery(String(j.everyWeeks)); }
     return j;
   }
 
@@ -78,13 +80,14 @@ export default function CarWash() {
 
   if (!data) return err ? <p className="pol-err">{err}</p> : <p className="pol-empty">Loading…</p>;
   const next = data.dates.find((d) => !d.cancelled);
+  const weekday = new Date(data.start + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
 
   return (
     <div className="cw">
       <div className="cw-bar">
         <label className="cw-label" htmlFor="cw-name">Your name</label>
         <input id="cw-name" className="pol-search" placeholder="e.g. Kelly J" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-        <span className="cw-hint">{data.capacity} places each time. Once it&apos;s full you&apos;ll go on the reserve list.</span>
+        <span className="cw-hint">The car wash comes {everyText(data.everyWeeks)}, on a {weekday}. {data.capacity} places each time; once it&apos;s full you&apos;ll go on the reserve list.</span>
       </div>
       {!manage && msg && <p className="pol-msg">{msg}</p>}
       {!manage && err && <p className="pol-err">{err}</p>}
@@ -153,6 +156,14 @@ export default function CarWash() {
             <p>Enter the Marketing Team Access passcode. Each date above now has “Not running this date” (it stays on the page, greyed out) and “Remove date” (it comes off the page altogether), plus Remove buttons on every booking. Use “Add a date” when the car wash comes on a different day (for example a Wednesday instead of the Tuesday). Mark the usual Tuesday as not running too.</p>
             <div className="pol-admin-row">
               <input className="pol-search" type="password" placeholder="Passcode" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Marketing Team Access passcode" autoComplete="off" />
+            </div>
+            <div className="pol-admin-row cw-admin-row">
+              <label className="cw-label" htmlFor="cw-start">Regular dates start</label>
+              <input id="cw-start" className="pol-search cw-small" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+              <label className="cw-label" htmlFor="cw-every">every</label>
+              <input id="cw-every" className="pol-search cw-tiny" type="number" min="1" max="12" value={every} onChange={(e) => setEvery(e.target.value)} />
+              <span className="cw-label">weeks</span>
+              <button type="button" className="pol-btn" onClick={() => setting({ start, everyWeeks: Number(every) }, "sched")} disabled={!!busy || !pass || !start || !every}>Save</button>
             </div>
             <div className="pol-admin-row cw-admin-row">
               <label className="cw-label" htmlFor="cw-cap">Places per date</label>

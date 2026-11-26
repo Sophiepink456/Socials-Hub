@@ -4,7 +4,7 @@ export const metadata = { title: "Bookings · Elevation Hub" };
 
 // Booking types. They're placeholders for now: give one an `href` to switch its tile on.
 const BOOKINGS = [
-  { id: "car-wash", title: "Car Wash Bookings", blurb: "Book your place for the car wash, every other Tuesday.", href: "/bookings/car-wash" },
+  { id: "car-wash", title: "Car Wash Bookings", blurb: "Book your place for the car wash.", href: "/bookings/car-wash" },
   { id: "seb", title: "Seb Bookings", blurb: "Book time with Seb.", href: null },
   { id: "sarah-lee-training", title: "Sarah-Lee Training", blurb: "Book a training session with Sarah-Lee.", href: null },
 ];
