@@ -474,3 +474,21 @@ a.eh-tile:hover .eh-go svg { transform: translateX(4px); }
 .sl-out { color: var(--lime); white-space: nowrap; }
 .sl-frame { background: #fff; border-radius: 20px; overflow: hidden; border: 1px solid #2a2a2a; }
 .sl-frame iframe { display: block; width: 100%; height: min(1500px, 160vh); min-height: 900px; border: 0; }
+/* Marketing Hub home (/marketing) in the Elevation Hub style */
+.mkt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.mkt-saved { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 40px; }
+.mkt-saved svg { width: 18px; height: 18px; }
+.mkt-section { font-size: clamp(30px, 4vw, 48px); font-weight: 500; letter-spacing: -0.02em; margin: 24px 0 10px; padding-top: 48px; border-top: 1px solid #222; }
+.eh-mkt .tools { gap: 20px; }
+.eh-mkt .grid { gap: 20px; }
+.eh-mkt .card { background: #151515; border: 1px solid #2a2a2a; border-radius: 20px; padding: 18px; color: #fff; transition: background .25s, border-color .25s, transform .25s; }
+.eh-mkt a.card:hover { border-color: var(--lime); transform: translateY(-4px); }
+.eh-mkt .card:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; border-radius: 20px; }
+.eh-mkt .card-title { font-family: inherit; font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin: 0 0 14px; color: #fff; }
+.eh-mkt .card-soon .card-title { color: rgba(255,255,255,.5); }
+.eh-mkt .card-meta { color: rgba(255,255,255,.65); font-size: 14px; margin-top: 12px; }
+.eh-mkt .tool-img, .eh-mkt .card-img { box-shadow: none; border-radius: 12px; }
+.eh-mkt .tool-icon svg { stroke: var(--lime); }
+.eh-mkt .tool-tag.live { color: #000; background: var(--lime); border-color: var(--lime); }
+.eh-mkt .grid .card-title { min-height: 2.5em; }
+@media (max-width: 600px) { .eh-mkt .grid .card-title { min-height: 0; } .mkt-saved { margin-bottom: 28px; } }

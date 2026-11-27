@@ -1,5 +1,6 @@
 import { DESIGNS } from "../../lib/designs";
 import HoverPreview from "../HoverPreview";
+import { ElevationLogo } from "../Wordmarks";
 import { PROPOSAL_PAGES, PACK_PAGES } from "../../lib/previewPages";
 
 // Tools shown above the social designs. `href: null` means it's coming soon:
@@ -108,42 +109,55 @@ function ToolCard({ t }) {
   );
 }
 
+export const metadata = { title: "Marketing Hub · Elevation Hub" };
+
 export default function Home() {
   return (
-    <main className="wrap">
-      <div className="home-head">
-        <div>
-          <h1 className="h1">Powered by Elevation<span className="g">.</span></h1>
-          <p className="lede">Everything you need from marketing in one place.</p>
-        </div>
-        <a href="/saved" className="btn btn-ghost folder-btn">
-          <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round">
-            <path d="M5 13a3 3 0 0 1 3-3h10l4 5h18a3 3 0 0 1 3 3v19a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V13Z" /><path d="M5 20h38" />
-          </svg>
-          Saved Docs
-        </a>
-      </div>
+    <div className="eh eh-mkt">
+      <header className="eh-top eh-top-sub">
+        <a href="/" aria-label="Elevation Hub home"><ElevationLogo className="eh-logo" /></a>
+        <a href="/api/logout" className="eh-pill">Sign out</a>
+      </header>
 
-      <div className="tools">
-        {TOOLS.map((t) => <ToolCard key={t.id} t={t} />)}
-      </div>
-
-      <h2 className="section-title">Social Designs<span className="g">.</span></h2>
-      <p className="lede">Pick the post you want to make, fill in the details and download it ready for LinkedIn.</p>
-
-      <div className="grid">
-        {DESIGNS.map((d) => (
-          <a key={d.id} href={`/d/${d.id}`} className="card">
-            <h2 className="card-title">{d.title}</h2>
-            <div className="card-img">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/api/render/${d.id}?sample=1`} alt={`${d.title} example`} loading="lazy" />
-            </div>
-            <div className="card-meta">{d.slidesLabel || (d.slides === 1 ? "1 image" : `${d.slides} slides`)} · {d.blurb}</div>
+      <main className="eh-main">
+        <a href="/" className="eh-back">← Elevation Hub</a>
+        <div className="mkt-head">
+          <div>
+            <h1 className="eh-title">Marketing Hub<span className="g">.</span></h1>
+            <p className="eh-lede">Everything you need from marketing in one place.</p>
+          </div>
+          <a href="/saved" className="eh-pill mkt-saved">
+            <svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round">
+              <path d="M5 13a3 3 0 0 1 3-3h10l4 5h18a3 3 0 0 1 3 3v19a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V13Z" /><path d="M5 20h38" />
+            </svg>
+            Saved Docs
           </a>
-        ))}
-      </div>
-      <p className="hint" style={{ marginTop: 48, textAlign: "center" }}><a href="/settings">Marketing Team Access</a> · <a href="/api/logout">Sign out</a></p>
-    </main>
+        </div>
+
+        <div className="tools">
+          {TOOLS.map((t) => <ToolCard key={t.id} t={t} />)}
+        </div>
+
+        <h2 className="mkt-section">Social Designs<span className="g">.</span></h2>
+        <p className="eh-lede">Pick the post you want to make, fill in the details and download it ready for LinkedIn.</p>
+
+        <div className="grid">
+          {DESIGNS.map((d) => (
+            <a key={d.id} href={`/d/${d.id}`} className="card">
+              <h2 className="card-title">{d.title}</h2>
+              <div className="card-img">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/render/${d.id}?sample=1`} alt={`${d.title} example`} loading="lazy" />
+              </div>
+              <div className="card-meta">{d.slidesLabel || (d.slides === 1 ? "1 image" : `${d.slides} slides`)} · {d.blurb}</div>
+            </a>
+          ))}
+        </div>
+
+        <div className="pol-foot">
+          <a href="/settings" className="pol-manage">Marketing Team Access</a>
+        </div>
+      </main>
+    </div>
   );
 }
