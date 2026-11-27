@@ -22,6 +22,14 @@
   text-rendering: geometricPrecision;
   font-kerning: normal;
 }
+
+/* 2026 brand: Google Sans Flex (variable) for the proposal and candidate pack pages. */
+@font-face { font-family: "GSF"; src: url("/letterhead/GoogleSansFlex.woff2") format("woff2"); font-weight: 1 1000; font-display: block; }
+.pp.pp26 { font-family: "GSF", system-ui, sans-serif; font-weight: 500; font-optical-sizing: auto; }
+.pp.pp26 .g { color: #BAE400; }
+.pp.pp26 .poppins { font-family: "GSF", system-ui, sans-serif; }
+.pp.pp26 ul { list-style: disc; }
+
 .pp * { box-sizing: border-box; margin: 0; padding: 0; }
 .pp .abs { position: absolute; }
 .pp .full { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
