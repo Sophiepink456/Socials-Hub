@@ -6,13 +6,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { packPages } from "../../lib/candidate/pages";
 import {
   CONSULTANTS, PACK_LIMITS as L, PACK_TEXT, PACK_WORDING, PACK_PHOTO_SLOTS, DEFAULT_ACCENT, DEFAULT_DARK,
-  blankPack, normalisePack, emailFor, packTextFields, packFieldName, packPhotoFits, assignPackPhotos,
+  blankPack, normalisePack, emailFor, packTextFields, packFieldName, packPhotoFits, assignPackPhotos, packTeamSize, PACK_MAX_CONSULTANTS,
 } from "../../lib/candidate/data";
 import { STOCK_PHOTOS } from "../../lib/proposal/data";
-import { PACK_STYLES, packStyle, packStyleDefaults, CORE_PACK_PAGES } from "../../lib/candidate/extra";
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal, StartFrom, LinesBox } from "./kit";
+import { CORE_PACK_PAGES } from "../../lib/candidate/extra";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, LimitModal, StartFrom, LinesBox, PhotoSlotPicker } from "./kit";
+import { PageBuilder } from "./PageBuilder";
 
 const DRAFT_KEY = "pack-draft-v1";
+const ORD = ["", "First", "Second", "Third", "Fourth", "Fifth"];
 const PATH = "/proposals/candidate-pack";
 
 export default function CandidateEditor({ mode = "new", record = null, onRecord }) {
@@ -103,9 +105,9 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
 
   function pickConsultant(which, name) {
     setP((cur) => {
-      const c = which === 1 ? "c1" : "c2";
-      const prev = cur[c];
-      let next = setIn(cur, which === 1 ? "consultant1" : "consultant2", name);
+      const c = `c${which}`;
+      const prev = cur[c] || {};
+      let next = setIn(cur, `consultant${which}`, name);
       next = setIn(next, `${c}.name`, name);
       if (!prev.email || prev.email === emailFor(prev.name)) next = setIn(next, `${c}.email`, emailFor(name));
       return next;
@@ -272,8 +274,34 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
     } catch { alert("Sorry, the PDF didn't build. Try again in a moment."); } finally { setBusy(""); }
   }
 
-  const two = !!p.twoConsultants;
-  const SECTION_PAGE = { start: "title", client: "title", consultants: "contact", about: "about", role: "role", key: "key", looking: "looking", offer: "offer", opportunity: "opportunity", pictures: "title", wording: "next", pages: "title" };
+  const team = packTeamSize(p);
+  const slot = (k) => PACK_PHOTO_SLOTS.find((s) => s.key === k);
+  const pic = (k, label) => <PhotoSlotPicker p={p} setP={setP} slot={slot(k)} page={slot(k).page} setPage={setPage} stock={STOCK_PHOTOS} fits={packPhotoFits} label={label} />;
+  // Extra pages in the Key Responsibilities / Looking For format.
+  const moreList = (kind, label) => {
+    const path = kind === "key" ? "keyMore" : "lookingMore";
+    const list = p[path] || [];
+    return (
+      <>
+        {list.map((m, j) => (
+          <div key={j} className="subgroup">
+            <h3 className="group-title" style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>{label} – page {j + 2}</span>
+              <button type="button" className="link muted" onClick={() => { if (confirm(`Remove ${label} page ${j + 2}?`)) { setP((cur) => ({ ...cur, [path]: (cur[path] || []).filter((_, i) => i !== j) })); setPage(kind); } }}>Remove page</button>
+            </h3>
+            <LinesBox label="Points on this page" path={`${path}.${j}.points`} max={L.points} each={L.point} placeholder="Point" page={`${kind}-${j + 2}`} subheads {...f} />
+          </div>
+        ))}
+        {list.length < 4 ? (
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => { setP((cur) => ({ ...cur, [path]: [...(cur[path] || []), { points: [""] }] })); setPage(`${kind}-${list.length + 2}`); }}>
+            + Add another {label} page
+          </button>
+        ) : <div className="hint">Up to 5 pages.</div>}
+        <div className="hint">Use another page when the points don’t all fit on one. It has the same heading and picture.</div>
+      </>
+    );
+  };
+  const SECTION_PAGE = { start: "title", client: "title", consultants: "contact", about: "about", role: "role", key: "key", looking: "looking", offer: "offer", opportunity: "opportunity", pictures: "next", wording: "next", pages: "title", builder: "title" };
   const toggle = (k) => { if (open !== k && SECTION_PAGE[k]) setPage(SECTION_PAGE[k]); setOpen((o) => (o === k ? "" : k)); };
   const setColour = (k, v) => setP((cur) => ({ ...cur, [k]: v, coloursAuto: false }));
 
@@ -353,6 +381,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
               {colourMsg ? <div style={{ marginTop: 4 }}>{colourMsg}</div> : null}
             </div>
           </div>
+          {pic("photoTitle", "Title page picture")}
         </Section>
 
         <Section title={`${review ? 2 : 3}. Consultant(s)`} open={open === "consultants"} onToggle={() => toggle("consultants")} done={!!p.consultant1}>
@@ -363,19 +392,25 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
               {CONSULTANTS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <Check label="Two consultants on this pack" path="twoConsultants" page="contact" {...f} />
-          {two ? (
-            <div className="row">
-              <label className="label" htmlFor="pc2"><span>Second consultant</span></label>
-              <select id="pc2" className="select" value={p.consultant2} onChange={(e) => pickConsultant(2, e.target.value)}>
+          <div className="row">
+            <label className="label" htmlFor="pcn"><span>How many consultants on this pack?</span></label>
+            <select id="pcn" className="select" value={team} onChange={(e) => { const n = Number(e.target.value); setP((cur) => ({ ...cur, consultantCount: n, twoConsultants: n === 2 })); setPage("contact"); }}>
+              {Array.from({ length: PACK_MAX_CONSULTANTS }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+            </select>
+            {team > 1 ? <div className="hint">With more than one consultant, the Contact page lists everyone together.</div> : null}
+          </div>
+          {Array.from({ length: team - 1 }, (_, i) => i + 2).map((n) => (
+            <div key={n} className="row">
+              <label className="label" htmlFor={`pc${n}`}><span>{ORD[n]} consultant</span></label>
+              <select id={`pc${n}`} className="select" value={p[`consultant${n}`] || ""} onChange={(e) => pickConsultant(n, e.target.value)}>
                 <option value="">Select a consultant</option>
-                {CONSULTANTS.filter((n) => n !== p.consultant1).map((n) => <option key={n} value={n}>{n}</option>)}
+                {CONSULTANTS.filter((c) => !Array.from({ length: team }, (_, j) => p[`consultant${j + 1}`]).some((x, j) => x === c && j + 1 !== n)).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-          ) : null}
-          {[1, ...(two ? [2] : [])].map((n) => (
+          ))}
+          {Array.from({ length: team }, (_, i) => i + 1).map((n) => (
             <div key={n} className="subgroup">
-              <h3 className="group-title">{(n === 1 ? p.consultant1 : p.consultant2) || (n === 1 ? "Consultant" : "Second consultant")}</h3>
+              <h3 className="group-title">{p[`consultant${n}`] || (n === 1 ? "Consultant" : `${ORD[n]} consultant`)}</h3>
               <Text label="Job title" path={`c${n}.title`} max={L.consultantTitle} page="contact" placeholder="e.g. Associate Director" {...f} />
               <Text label="Phone" path={`c${n}.phone`} max={L.phone} page="contact" placeholder="e.g. 07740 406 126" {...f} />
               <Text label="Email" path={`c${n}.email`} max={L.email} page="contact" {...f} />
@@ -410,6 +445,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
         <Section title={`${review ? 4 : 5}. The Opportunity`} open={open === "opportunity"} onToggle={() => toggle("opportunity")} done={!!p.opportunity}>
           <Text label="The opportunity" path="opportunity" max={L.opportunity} multiline rows={10} page="opportunity" {...f}
             hint="Why the role exists and why it’s a good move. Start a new line for a new paragraph." />
+          {pic("photoOpportunity", "The Opportunity picture")}
         </Section>
 
         <Section title={`${review ? 5 : 6}. The Role`} open={open === "role"} onToggle={() => toggle("role")} done={!!(p.jobTitle && p.roleProfile)}>
@@ -419,18 +455,23 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           {!p.noDirectReports ? <Text label="Direct reports" path="directReports" max={L.directReports} page="role" {...f} /> : null}
           <Check label="No direct reports (remove this line)" path="noDirectReports" page="role" {...f} />
           <Text label="Role profile" path="roleProfile" max={L.roleProfile} multiline rows={10} page="role" {...f} hint="Start a new line for a new paragraph." />
+          {pic("photoRole", "The Role picture")}
         </Section>
 
         <Section title={`${review ? 6 : 7}. Key Responsibilities`} open={open === "key"} onToggle={() => toggle("key")} done={(p.keyPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="keyText" max={L.keyText} multiline rows={4} page="key" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
-          <LinesBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" {...f} />
+          <LinesBox label="Responsibilities" path="keyPoints" max={L.points} each={L.point} placeholder="Responsibility" page="key" subheads {...f} />
+          {moreList("key", "Key Responsibilities")}
+          {pic("photoKey", "Key Responsibilities picture")}
         </Section>
 
         <Section title={`${review ? 7 : 8}. What We’re Looking For`} open={open === "looking"} onToggle={() => toggle("looking")} done={(p.lookingPoints || []).some((x) => String(x).trim())}>
           <Text label="Intro paragraph" path="lookingText" max={L.lookingText} multiline rows={4} page="looking" optional {...f} hint="Shown above the bullet points. The page stops taking more text once it’s full." />
-          <LinesBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" {...f} />
+          <LinesBox label="Skills and attributes" path="lookingPoints" max={L.points} each={L.point} placeholder="Point" page="looking" subheads {...f} />
           <Text label="Closing line under the points" path="lookingOutro" max={L.lookingOutro} multiline rows={3} page="looking" optional {...f}
             placeholder="e.g. Experience within food manufacturing would be particularly beneficial." />
+          {moreList("looking", "What We’re Looking For")}
+          {pic("photoLooking", "What We’re Looking For picture")}
         </Section>
 
         <Section title={`${review ? 8 : 9}. What’s on Offer`} open={open === "offer"} onToggle={() => toggle("offer")} done={!!(p.salary && p.why)}>
@@ -438,38 +479,17 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           <Text label="Contract" path="contract" max={L.contract} multiline rows={2} page="offer" placeholder="e.g. Permanent afternoon shift: Monday–Thursday, 2pm–Midnight" {...f} hint="Longer lines wrap underneath on the page." />
           <LinesBox label="Benefits" path="benefits" max={L.benefits} each={L.benefit} placeholder="Benefit" page="offer" {...f} />
           <Text label="Why this role stands out" path="why" max={L.why} multiline rows={7} page="offer" {...f} />
+          {pic("photoOffer", "What’s on Offer picture")}
         </Section>
 
-        <Section title={`${review ? 9 : 10}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
-          <p className="hint" style={{ marginTop: 0 }}>Photos from the client’s website come first, then ours. Faded ones are too small for that spot and would look blurry.</p>
-          {PACK_PHOTO_SLOTS.map((s) => (
-            <div key={s.key} className="row">
-              <label className="label"><span>{s.label}</span></label>
-              <div className="photo-pick">
-                {(p.sitePhotos || []).map((ph) => {
-                  const fits = packPhotoFits(ph, s);
-                  return (
-                    <button key={ph.url} type="button" disabled={!fits} title={fits ? "From the client’s website" : "Too small for this spot"}
-                      className={"thumb site" + (p[s.key] === ph.url ? " on" : "") + (fits ? "" : " small")} onClick={() => { pickPhoto(s.key, ph.url); setPage(s.page); }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ph.url} alt="" loading="lazy" />
-                    </button>
-                  );
-                })}
-                {STOCK_PHOTOS.map((src) => (
-                  <button key={src} type="button" className={"thumb" + (p[s.key] === src ? " on" : "")} onClick={() => { pickPhoto(s.key, src); setPage(s.page); }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt="" loading="lazy" />
-                  </button>
-                ))}
-                <label className="thumb upload" title="Upload a photo">
-                  <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files && e.target.files[0]; if (file) { pickPhoto(s.key, await readImage(file)); setPage(s.page); } }} />
-                  +
-                </label>
-              </div>
-              {p[s.key] ? <PhotoFramer src={p[s.key]} slot={s} pos={(p.photoPos || {})[s.key]} onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [s.key]: pos } })); setPage(s.page); }} /> : null}
-            </div>
-          ))}
+        <Section title={`${review ? 9 : 10}. Next Steps & End pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
+          <p className="hint" style={{ marginTop: 0 }}>The other pages’ pictures are chosen in their own sections above.</p>
+          {pic("photoNext", "Next Steps picture (bottom strip)")}
+          {pic("photoEnd", "End page picture (faint circle)")}
+        </Section>
+
+        <Section title={`${review ? 10 : 11}. Add more pages${(p.extraPages || []).length ? ` (${(p.extraPages || []).length} added)` : ""}`} open={open === "builder"} onToggle={() => toggle("builder")} done>
+          <PageBuilder kind="pack" p={p} setP={setP} setPage={setPage} pages={pages} />
         </Section>
 
         {review ? (
@@ -478,7 +498,7 @@ export default function CandidateEditor({ mode = "new", record = null, onRecord 
           </Section>
         ) : null}
         {review ? (
-          <Section title={`Add or remove pages${(p.extraPages || []).length || (p.hiddenPages || []).length ? ` (${(p.extraPages || []).length} added, ${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "pages"} onToggle={() => toggle("pages")} done>
+          <Section title={`Remove standard pages${(p.hiddenPages || []).length ? ` (${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "pages"} onToggle={() => toggle("pages")} done>
             <PackPagesEditor p={p} setP={setP} setPage={setPage} pages={pages} />
           </Section>
         ) : null}
@@ -658,49 +678,13 @@ function PackWording({ p, setP, setPage }) {
   );
 }
 
-// Back office: take standard pages out, and add pages built from the pack's own page designs.
-function PackPagesEditor({ p, setP, setPage, pages }) {
-  const [howMany, setHowMany] = useState(1);
-  const [openId, setOpenId] = useState("");
-  const [busy, setBusy] = useState("");
-  const list = p.extraPages || [];
+// Back office: take standard pages out of this pack. (Added pages are in "Add more pages".)
+function PackPagesEditor({ p, setP, setPage }) {
   const hidden = new Set(p.hiddenPages || []);
-  const update = (id, fn) => setP((cur) => ({ ...cur, extraPages: (cur.extraPages || []).map((e) => (e.id === id ? fn(e) : e)) }));
-
-  function add() {
-    const fresh = Array.from({ length: howMany }, () => ({ id: Math.random().toString(36).slice(2, 10), style: "", after: "beforeEnd", name: "", v: {}, photoPos: {} }));
-    setP((cur) => ({ ...cur, extraPages: [...(cur.extraPages || []), ...fresh] }));
-    setOpenId(fresh[0].id);
-  }
-  function remove(id) {
-    if (!confirm("Remove this added page?")) return;
-    setP((cur) => {
-      const gone = (cur.extraPages || []).find((e) => e.id === id);
-      return { ...cur, extraPages: (cur.extraPages || []).filter((e) => e.id !== id).map((e) => (e.after === id ? { ...e, after: gone ? gone.after : "beforeEnd" } : e)) };
-    });
-  }
-  function chooseStyle(e, style) {
-    if (e.style && Object.keys(e.v || {}).length && !confirm("Changing the design starts this page again with that page’s wording. Carry on?")) return;
-    update(e.id, (x) => ({ ...x, style, v: style ? packStyleDefaults(style, p) : {}, photoPos: {} }));
-    if (style) setPage(`x-${e.id}`);
-  }
-  async function upload(e, f, file) {
-    if (!file) return;
-    setBusy(e.id + f.k);
-    try {
-      const dataUrl = await readImage(file, 2400);
-      const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: j.url }, photoPos: { ...(x.photoPos || {}), [f.k]: undefined } }));
-      setPage(`x-${e.id}`);
-    } catch (err) { alert(err.message || "Couldn't upload that picture."); } finally { setBusy(""); }
-  }
   return (
     <>
-      <h4 className="group-title" style={{ fontSize: 15, marginTop: 0 }}>Standard pages</h4>
       <p className="hint" style={{ marginTop: 0 }}>Untick a page to leave it out of this pack. Tick it again to put it back.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px", marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px" }}>
         {CORE_PACK_PAGES.map(([k, label]) => (
           <label key={k} className="check" style={{ opacity: hidden.has(k) ? 0.55 : 1 }}>
             <input type="checkbox" checked={!hidden.has(k)} disabled={k === "title"} onChange={(ev) => {
@@ -712,100 +696,6 @@ function PackPagesEditor({ p, setP, setPage, pages }) {
           </label>
         ))}
       </div>
-      <h4 className="group-title" style={{ fontSize: 15 }}>Added pages</h4>
-      <p className="hint" style={{ marginTop: 0 }}>Add pages using any of the candidate pack’s page designs. Each new page starts as a copy of that page in this pack; change any words and pictures, and choose where it goes.</p>
-      <div className="row" style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-        <div>
-          <label className="label" htmlFor="pack-howmany"><span>How many pages to add?</span></label>
-          <select id="pack-howmany" className="input" style={{ width: 120 }} value={howMany} onChange={(ev) => setHowMany(Number(ev.target.value))}>
-            {Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
-          </select>
-        </div>
-        <button type="button" className="btn btn-primary btn-small" onClick={add}>Add {howMany === 1 ? "page" : `${howMany} pages`}</button>
-      </div>
-      {list.map((e, n) => {
-        const st = packStyle(e.style);
-        const isOpen = openId === e.id;
-        const key = `x-${e.id}`;
-        const pageNo = pages.findIndex((pg) => pg.key === key) + 1;
-        const where = pages.filter((pg) => pg.key !== key && pg.key !== "end");
-        return (
-          <div key={e.id} className="panel" style={{ padding: 16, marginTop: 14 }}>
-            <div className="row" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 0 }}>
-              <button type="button" className="link" style={{ fontWeight: 700, textAlign: "left" }} onClick={() => { setOpenId(isOpen ? "" : e.id); if (st) setPage(key); }}>
-                {isOpen ? "–" : "+"} Added page {n + 1}{st ? `: ${e.name || st.label}` : " (choose a design)"}{pageNo > 0 ? ` · page ${pageNo} of ${pages.length}` : ""}
-              </button>
-              <button type="button" className="link muted" onClick={() => remove(e.id)}>Remove</button>
-            </div>
-            {isOpen ? (
-              <div style={{ marginTop: 12 }}>
-                <div className="row">
-                  <label className="label"><span>Page design</span></label>
-                  <select className="input" value={e.style} onChange={(ev) => chooseStyle(e, ev.target.value)}>
-                    <option value="">Choose a page design…</option>
-                    {PACK_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                </div>
-                {st ? (
-                  <>
-                    <div className="row">
-                      <label className="label"><span>Where it goes</span></label>
-                      <select className="input" value={e.after || "beforeEnd"} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, after: val })); setPage(key); }}>
-                        <option value="beforeEnd">Before the end page</option>
-                        {where.map((pg) => <option key={pg.key} value={pg.key.startsWith("x-") ? pg.key.slice(2) : pg.key}>After page {pages.indexOf(pg) + 1}: {pg.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="row">
-                      <label className="label"><span>Name on the page tab</span></label>
-                      <input className="input" value={e.name || ""} placeholder={st.label} maxLength={40} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, name: val })); }} />
-                    </div>
-                    <h4 className="group-title" style={{ fontSize: 15 }}>Words and pictures on this page</h4>
-                    {st.fields.map((f) => {
-                      const val = e.v && e.v[f.k] !== undefined ? e.v[f.k] : f.def(p);
-                      const setVal = (nv) => {
-                        if (f.max && typeof nv === "string" && nv.length > f.max) { limitHit(f.label, f.max, nv.length); nv = nv.slice(0, f.max); }
-                        update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
-                      };
-                      if (f.kind === "image") {
-                        return (
-                          <div key={f.k} className="row">
-                            <label className="label"><span>{f.label}</span></label>
-                            {val ? <PhotoFramer src={val} slot={{ w: f.w, h: f.h }} pos={(e.photoPos || {})[f.k]}
-                              onChange={(pos) => { update(e.id, (x) => ({ ...x, photoPos: { ...(x.photoPos || {}), [f.k]: pos } })); setPage(key); }} /> : <div className="hint">No picture.</div>}
-                            <div className="actions" style={{ marginTop: 6 }}>
-                              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
-                                {busy === e.id + f.k ? "Uploading…" : "Upload picture"}
-                                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(ev) => { upload(e, f, ev.target.files && ev.target.files[0]); ev.target.value = ""; }} />
-                              </label>
-                              {[...(p.sitePhotos || []).map((ph) => ph.url), ...STOCK_PHOTOS].length && f.k !== "siteShot" ? (
-                                <select className="input" style={{ width: "auto" }} value="" onChange={(ev) => { if (ev.target.value) { setVal(ev.target.value); setPage(key); } }}>
-                                  <option value="">…or use another photo</option>
-                                  {(p.sitePhotos || []).map((ph, i) => <option key={ph.url} value={ph.url}>Website photo {i + 1}</option>)}
-                                  {STOCK_PHOTOS.map((src, i) => <option key={src} value={src}>Our photo {i + 1}</option>)}
-                                </select>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={f.k} className="row">
-                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span>{f.max ? <Count value={val} max={f.max} /> : null}</label>
-                          {f.kind === "text"
-                            ? <input id={`${e.id}-${f.k}`} className="input" value={val} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => setVal(ev.target.value)} />
-                            : <textarea id={`${e.id}-${f.k}`} className="input" rows={f.kind === "lines" ? 6 : 4} value={val} spellCheck lang="en-GB" onFocus={() => setPage(key)} onChange={(ev) => setVal(ev.target.value)} />}
-                        </div>
-                      );
-                    })}
-                    {e.style === "contact" ? <div className="hint">The consultants and their details come from section 2.</div> : null}
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-      {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the pack and its PDF.</p> : null}
     </>
   );
 }

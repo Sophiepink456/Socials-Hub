@@ -9,7 +9,8 @@ import {
   MAX_ROLES, roleProfileLimit, blankRole,
 } from "../../lib/proposal/data";
 
-import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom, LinesBox } from "./kit";
+import { setIn, getIn, readImage, limitHit, Count, Text, Check, Section, PhotoFramer, ScaledPage, StartFrom, LinesBox, PhotoSlotPicker } from "./kit";
+import { PageBuilder } from "./PageBuilder";
 
 const DRAFT_KEY = "proposal-draft-v1";
 
@@ -76,6 +77,11 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
   const pRef = useRef(p);
   pRef.current = p;
   const f = { p, set, setPage };
+  // A page's picture, chosen in that page's own section.
+  const pic = (k, label) => {
+    const slot = PHOTO_SLOTS.find((x) => x.key === k);
+    return <PhotoSlotPicker p={p} setP={setP} slot={slot} page={slot.page || "title"} setPage={setPage} stock={STOCK_PHOTOS} fits={photoFits} label={label} />;
+  };
 
   // Links used in the PDF (e.g. "View Media"), so they also work in the preview.
   const [ctx, setCtx] = useState({});
@@ -174,7 +180,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
       const slotsFilled = Object.keys(assignPhotos(r.photos || [])).length;
       setSiteState({
         busy: false,
-        msg: `${n ? `Found ${n} usable photo${n === 1 ? "" : "s"} and placed ${slotsFilled} of ${PHOTO_SLOTS.length}.` : "No usable photos on that site, so our own photos stay in."}${slotsFilled < PHOTO_SLOTS.length && n ? " The other spots keep our photos, as the site didn't have enough suitable pictures big enough to stay sharp." : ""} ${r.logo ? `Logo found (${r.logoSource}).` : "No logo found. Please upload it below."} Swap any picture in section ${p.nda ? 11 : 12}.`,
+        msg: `${n ? `Found ${n} usable photo${n === 1 ? "" : "s"} and placed ${slotsFilled} of ${PHOTO_SLOTS.length}.` : "No usable photos on that site, so our own photos stay in."}${slotsFilled < PHOTO_SLOTS.length && n ? " The other spots keep our photos, as the site didn't have enough suitable pictures big enough to stay sharp." : ""} ${r.logo ? `Logo found (${r.logoSource}).` : "No logo found. Please upload it below."} Swap any picture in that page’s section.`,
       });
       setPage("title");
     } catch (e) {
@@ -355,6 +361,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           <Check label="Keep the logo’s own colours (otherwise it’s shown in white)" path="logoColour" page="title" {...f} />
           <Check label="Is this an NDA-led confidential search?" path="nda" page="contents" {...f}
             hint="Removes the Branded Campaigns page and “Branded Media Adverts”, and renumbers the contents." />
+          {pic("photoTitle", "Title page picture")}
         </Section>
 
         <Section title="2. Consultant(s)" open={open === "consultants"} onToggle={() => toggle("consultants")} done={!!p.consultant1}>
@@ -387,6 +394,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         <Section title="3. Our Understanding" open={open === "understanding"} onToggle={() => toggle("understanding")} done={!!p.understanding}>
           <Text label="Our understanding of the brief" path="understanding" max={LIMITS.understanding} multiline rows={12} page="understanding" {...f}
             hint="Start a new line for a new paragraph." />
+          {pic("photoUnderstanding", "Our Understanding picture")}
         </Section>
 
         <Section title={`4. About ${p.clientName || "the client"}`} open={open === "about"} onToggle={() => toggle("about")} done={!!p.about}>
@@ -403,6 +411,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           </div>
           {aboutState.msg ? <div className="hint">{aboutState.msg}</div> : null}
           {aboutState.draft ? <div className="hint" style={{ whiteSpace: "pre-line", background: "#f6f6f6", padding: 10, borderRadius: 8 }}>{aboutState.draft}</div> : null}
+          {pic("photoAbout", "About page picture")}
         </Section>
 
         <Section title="5. Role Profile" open={open === "role"} onToggle={() => toggle("role")} done={p.multiRole ? (p.roles || []).every((r) => r.jobTitle && r.profile) : !!(p.jobTitle && p.roleProfile)}>
@@ -468,6 +477,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               <Text label="Role profile" path="roleProfile" max={LIMITS.roleProfile} multiline rows={12} page="role" {...f} hint="Leave a blank line between paragraphs." />
             </>
           )}
+          {pic("photoRole", "Role Profile picture")}
         </Section>
 
         <Section title="6. Our Approach" open={open === "approach"} onToggle={() => toggle("approach")} done>
@@ -478,11 +488,13 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
               {p[a.key] !== a.text ? <button type="button" className="link" style={{ marginTop: -10, marginBottom: 16 }} onClick={() => set(a.key, a.text)}>Reset to standard wording</button> : null}
             </div>
           ))}
+          {pic("photoApproach", "Our Approach banner picture")}
         </Section>
 
         {!p.nda ? (
           <Section title="7. Branded Campaigns" open={open === "branded"} onToggle={() => toggle("branded")} done>
             <BrandedAdPicker p={p} set={set} setPage={setPage} />
+            <BrandedAdPicker p={p} set={set} setPage={setPage} second />
             <button type="button" className="btn btn-ghost btn-small" onClick={() => setPage("branded")}>Show this page</button>
           </Section>
         ) : null}
@@ -530,6 +542,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
             <div style={{ flex: "1 1 160px" }}><Text label="Guarantee period (weeks)" path="guaranteeWeeks" max={LIMITS.weeks} page="terms" placeholder="16" {...f} /></div>
             <div style={{ flex: "1 1 160px" }}><Text label="Payment due (days from invoice)" path="paymentDays" max={LIMITS.days} page="terms" placeholder="30" {...f} /></div>
           </div>
+          {pic("photoTerms", "Terms & Fees picture")}
         </Section>
 
         <Section title={`${p.nda ? 10 : 11}. Appendices`} open={open === "appendices"} onToggle={() => toggle("appendices")} done>
@@ -563,44 +576,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
           </>
         </Section>
 
-        <Section title={`${p.nda ? 11 : 12}. Pictures`} open={open === "pictures"} onToggle={() => toggle("pictures")} done>
-          <p className="hint" style={{ marginTop: 0 }}>Photos from the client’s website come first, then ours. Faded ones are too small for that spot and would look blurry.</p>
-          {PHOTO_SLOTS.map((s) => (
-            <div key={s.key} className="row">
-              <label className="label"><span>{s.label}</span></label>
-              <div className="photo-pick">
-                {(p.sitePhotos || []).map((ph) => {
-                  const fits = photoFits(ph, s);
-                  return (
-                    <button key={ph.url} type="button" disabled={!fits} title={fits ? "From the client’s website" : "Too small for this spot"}
-                      className={"thumb site" + (p[s.key] === ph.url ? " on" : "") + (fits ? "" : " small")}
-                      onClick={() => { pickPhoto(s.key, ph.url); setPage(slotPage(s.key)); }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ph.url} alt="" loading="lazy" />
-                    </button>
-                  );
-                })}
-                {STOCK_PHOTOS.map((src) => (
-                  <button key={src} type="button" className={"thumb" + (p[s.key] === src ? " on" : "")}
-                    onClick={() => { pickPhoto(s.key, src); setPage(slotPage(s.key)); }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt="" loading="lazy" />
-                  </button>
-                ))}
-                <label className="thumb upload" title="Upload a photo">
-                  <input type="file" accept="image/*" onChange={async (e) => {
-                    const file = e.target.files && e.target.files[0];
-                    if (file) pickPhoto(s.key, await readImage(file));
-                  }} />
-                  +
-                </label>
-              </div>
-              {p[s.key] ? (
-                <PhotoFramer src={p[s.key]} slot={s} pos={(p.photoPos || {})[s.key]}
-                  onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [s.key]: pos } })); setPage(slotPage(s.key)); }} />
-              ) : null}
-            </div>
-          ))}
+        <Section title={`${p.nda ? 11 : 12}. Add more pages${(p.extraPages || []).length ? ` (${(p.extraPages || []).length} added)` : ""}`} open={open === "extra"} onToggle={() => toggle("extra")} done>
+          <PageBuilder kind="proposal" p={p} setP={setP} setPage={setPage} pages={pages} />
         </Section>
 
         {review ? (
@@ -610,7 +587,7 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
         ) : null}
 
         {review ? (
-          <Section title={`Add or remove pages${(p.extraPages || []).length || (p.hiddenPages || []).length ? ` (${(p.extraPages || []).length} added, ${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "extra"} onToggle={() => toggle("extra")} done>
+          <Section title={`Remove standard pages${(p.hiddenPages || []).length ? ` (${(p.hiddenPages || []).length} removed)` : ""} (back office only)`} open={open === "stdpages"} onToggle={() => toggle("stdpages")} done>
             <ExtraPages p={p} setP={setP} setPage={setPage} pages={pages} />
           </Section>
         ) : null}
@@ -731,7 +708,8 @@ export default function ProposalEditor({ mode = "new", record = null, onRecord }
 
 // Shows a 1920 x 1080 page shrunk to fit the column.
 // Dropdown of our branded ads from the Drive folder, labelled "Client – Job title", A–Z by client.
-function BrandedAdPicker({ p, set, setPage }) {
+function BrandedAdPicker({ p, set, setPage, second }) {
+  const F = second ? { id: "brandedAdId2", ad: "brandedAd2", fit: "brandedFit2" } : { id: "brandedAdId", ad: "brandedAd", fit: "brandedFit" };
   const [state, setState] = useState({ loading: true, ads: [], pending: 0, error: "" });
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
@@ -758,44 +736,46 @@ function BrandedAdPicker({ p, set, setPage }) {
 
   async function choose(id) {
     setMsg("");
-    if (!id) { set("brandedAdId", ""); set("brandedAd", ""); return; }
+    if (!id) { set(F.id, ""); set(F.ad, ""); setPage("branded"); return; }
     const ad = state.ads.find((a) => a.id === id);
     setBusy(true);
     try {
       const r = await fetch("/api/proposals/ads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, updated: ad && ad.updated }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      set("brandedAdId", id);
-      set("brandedAd", j.url);
+      set(F.id, id);
+      set(F.ad, j.url);
       setPage("branded");
     } catch (e) { setMsg(e.message || "Couldn't fetch that ad."); } finally { setBusy(false); }
   }
 
   const q = filter.trim().toLowerCase();
-  const shown = q ? state.ads.filter((a) => a.label.toLowerCase().includes(q) || a.id === p.brandedAdId) : state.ads;
+  const shown = q ? state.ads.filter((a) => a.label.toLowerCase().includes(q) || a.id === p[F.id]) : state.ads;
+  const htmlId = second ? "ad2" : "ad";
   return (
     <div className="row">
-      <label className="label" htmlFor="ad"><span>Branded ad for the first tile</span></label>
+      <label className="label" htmlFor={htmlId}><span>{second ? "Second tile: a static branded ad instead of the animation (optional)" : "Branded ad for the first tile"}</span></label>
       {state.ads.length > 12 ? (
         <input className="input" placeholder="Type to filter by client or job title" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 8 }} />
       ) : null}
-      <select id="ad" className="input" value={p.brandedAdId || ""} disabled={busy || state.loading} onChange={(e) => choose(e.target.value)}>
-        <option value="">{state.loading ? "Loading our branded ads…" : "None – keep our standard example"}</option>
+      <select id={htmlId} className="input" value={p[F.id] || ""} disabled={busy || state.loading} onChange={(e) => choose(e.target.value)}>
+        <option value="">{state.loading ? "Loading our branded ads…" : second ? "None – keep the animated example" : "None – keep our standard example"}</option>
         {shown.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
       </select>
       <div className="hint">
         {busy ? "Fetching the ad…" : state.error ? <span className="warn">{state.error}</span>
           : state.pending ? `Reading ${state.pending} new ad${state.pending === 1 ? "" : "s"} to label them. Some may show a file name for a minute.`
+          : second ? "Choosing an ad here replaces the animation in the middle tile and takes away the “View Media” link under it."
           : `${state.ads.length} ads from the Drive folder. New ones appear automatically.`}
         {msg ? <> <span className="warn">{msg}</span></> : null}
       </div>
-      {p.brandedAd ? (
+      {p[F.ad] ? (
         <div style={{ marginTop: 12 }}>
           <div className="label"><span>How it sits in the tile</span></div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
             {[["fill", "Fill – centred"], ["top", "Fill – keep the top"], ["bottom", "Fill – keep the bottom"], ["whole", "Show the whole ad"]].map(([v, l]) => (
-              <button key={v} type="button" className={"btn btn-small " + ((p.brandedFit || "fill") === v ? "btn-primary" : "btn-ghost")}
-                onClick={() => { set("brandedFit", v); setPage("branded"); }}>{l}</button>
+              <button key={v} type="button" className={"btn btn-small " + ((p[F.fit] || "fill") === v ? "btn-primary" : "btn-ghost")}
+                onClick={() => { set(F.fit, v); setPage("branded"); }}>{l}</button>
             ))}
           </div>
           <div className="hint">If anything is cut off, try “keep the top”, “keep the bottom” or “Show the whole ad”.</div>
@@ -892,44 +872,7 @@ function CandidatePictures({ p, set, setP, setPage }) {
 // ---- Back office: add extra pages ------------------------------------------------
 // Pick how many, choose a page style for each, edit every word and picture on it, and choose
 // where it goes. Page numbers and the Contents page update themselves.
-function ExtraPages({ p, setP, setPage, pages }) {
-  const [howMany, setHowMany] = useState(1);
-  const [openId, setOpenId] = useState("");
-  const [busy, setBusy] = useState("");
-  const list = p.extraPages || [];
-  const update = (id, fn) => setP((cur) => ({ ...cur, extraPages: (cur.extraPages || []).map((e) => (e.id === id ? fn(e) : e)) }));
-
-  function add() {
-    const fresh = Array.from({ length: howMany }, () => ({ id: Math.random().toString(36).slice(2, 10), style: "", after: "lastSection", name: "", desc: "", v: {}, photoPos: {} }));
-    setP((cur) => ({ ...cur, extraPages: [...(cur.extraPages || []), ...fresh] }));
-    setOpenId(fresh[0].id);
-  }
-  function remove(id) {
-    if (!confirm("Remove this added page?")) return;
-    // Anything placed after it moves to where it was.
-    setP((cur) => {
-      const gone = (cur.extraPages || []).find((e) => e.id === id);
-      return { ...cur, extraPages: (cur.extraPages || []).filter((e) => e.id !== id).map((e) => (e.after === `x-${id}` ? { ...e, after: gone ? gone.after : "lastSection" } : e)) };
-    });
-  }
-  function chooseStyle(e, styleId) {
-    const st = styleById(styleId);
-    update(e.id, (x) => ({ ...x, style: styleId, v: defaultsFor(styleId, p), photoPos: {}, name: x.name || (st ? st.label.replace(/ style.*$/, "") : "") }));
-    setPage(`x-${e.id}`);
-  }
-  async function upload(e, f, file) {
-    if (!file) return;
-    setBusy(e.id + f.k);
-    try {
-      const dataUrl = await readImage(file, 2400);
-      const r = await fetch("/api/proposals/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUrl }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: j.url }, photoPos: { ...(x.photoPos || {}), [f.posKey]: undefined } }));
-      setPage(`x-${e.id}`);
-    } catch (err) { alert(err.message || "Couldn't upload that picture."); } finally { setBusy(""); }
-  }
-
+function ExtraPages({ p, setP, setPage }) {
   const hidden = new Set(p.hiddenPages || []);
   const STANDARD = [
     ["title", "Title"], ["contents", "Contents"], ["understanding", "Our Understanding"], ["about", "About"], ["role", "Role Profile"],
@@ -946,9 +889,8 @@ function ExtraPages({ p, setP, setPage, pages }) {
   }
   return (
     <>
-      <h4 className="group-title" style={{ fontSize: 15, marginTop: 0 }}>Standard pages</h4>
-      <p className="hint" style={{ marginTop: 0 }}>Untick a page to remove it from this proposal. Page numbers and the Contents page update automatically. Tick it again to put it back.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px", marginBottom: 18 }}>
+      <p className="hint" style={{ marginTop: 0 }}>Untick a page to remove it from this proposal. Page numbers and the Contents page update automatically. Tick it again to put it back. Added pages are in “Add more pages”.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 16px" }}>
         {STANDARD.map(([k, label]) => (
           <label key={k} className="check" style={{ opacity: hidden.has(k) ? 0.55 : 1 }}>
             <input type="checkbox" checked={!hidden.has(k)} onChange={(ev) => toggleStd(k, ev.target.checked)} />
@@ -956,112 +898,6 @@ function ExtraPages({ p, setP, setPage, pages }) {
           </label>
         ))}
       </div>
-      <h4 className="group-title" style={{ fontSize: 15 }}>Added pages</h4>
-      <p className="hint" style={{ marginTop: 0 }}>Add pages using any of the proposal’s page designs. Every word and picture on them can be changed, and you choose where each one goes. Page numbers and the Contents page update automatically. Consultants don’t see this section.</p>
-      <div className="row" style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-        <div>
-          <label className="label" htmlFor="howmany"><span>How many pages to add?</span></label>
-          <select id="howmany" className="input" style={{ width: 120 }} value={howMany} onChange={(e) => setHowMany(Number(e.target.value))}>
-            {Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
-          </select>
-        </div>
-        <button type="button" className="btn btn-primary btn-small" onClick={add}>Add {howMany === 1 ? "page" : `${howMany} pages`}</button>
-      </div>
-
-      {list.map((e, n) => {
-        const st = styleById(e.style);
-        const isOpen = openId === e.id;
-        const where = pages.filter((pg) => pg.key !== `x-${e.id}` && pg.key !== "end");
-        const label = (pages.find((pg) => pg.key === `x-${e.id}`) || {}).label;
-        const pageNo = pages.findIndex((pg) => pg.key === `x-${e.id}`) + 1;
-        return (
-          <div key={e.id} className="panel" style={{ padding: 16, marginTop: 14 }}>
-            <div className="row" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <button type="button" className="link" style={{ fontWeight: 700, textAlign: "left" }} onClick={() => { setOpenId(isOpen ? "" : e.id); if (st) setPage(`x-${e.id}`); }}>
-                {isOpen ? "–" : "+"} Added page {n + 1}{st ? `: ${e.name || label || st.label}` : " (choose a style)"}{pageNo > 0 ? ` · page ${pageNo} of ${pages.length}` : ""}
-              </button>
-              <button type="button" className="link muted" onClick={() => remove(e.id)}>Remove</button>
-            </div>
-            {isOpen ? (
-              <div style={{ marginTop: 12 }}>
-                <div className="row">
-                  <label className="label"><span>Page style</span></label>
-                  <select className="input" value={e.style} onChange={(ev) => chooseStyle(e, ev.target.value)}>
-                    <option value="">Choose a page style…</option>
-                    {EXTRA_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                  {e.style ? <div className="hint">Changing the style starts this page again with that style’s wording.</div> : null}
-                </div>
-                {st ? (
-                  <>
-                    <div className="row">
-                      <label className="label"><span>Where it goes</span></label>
-                      <select className="input" value={e.after || "lastSection"} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, after: val })); setPage(`x-${e.id}`); }}>
-                        <option value="lastSection">Before the end page</option>
-                        {where.map((pg) => <option key={pg.key} value={pg.key}>After page {pages.indexOf(pg) + 1}: {pg.label}</option>)}
-                      </select>
-                    </div>
-                    {st.numbered === false ? null : (
-                      <>
-                        <div className="row">
-                          <label className="label"><span>Name on the Contents page and footer</span></label>
-                          <input className="input" value={e.name || ""} onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, name: val })); }} />
-                        </div>
-                        <div className="row">
-                          <label className="label"><span>Line under it on the Contents page</span></label>
-                          <input className="input" value={e.desc || ""} placeholder="Leave blank to use the style’s standard line" onChange={(ev) => { const val = ev.target.value; update(e.id, (x) => ({ ...x, desc: val })); }} />
-                          <div className="hint">Only shows on the Contents page if this page comes after it.</div>
-                        </div>
-                      </>
-                    )}
-                    <h4 className="group-title" style={{ fontSize: 15 }}>Text and pictures on this page</h4>
-                    {st.fields.map((f) => {
-                      const val = e.v && e.v[f.k] !== undefined ? e.v[f.k] : "";
-                      // Body text has the same limits as the original page, with the same cut-off and popup.
-                      const setVal = (nv) => {
-                        if (f.max && typeof nv === "string" && nv.length > f.max) { limitHit(f.label, f.max, nv.length); nv = nv.slice(0, f.max); }
-                        update(e.id, (x) => ({ ...x, v: { ...x.v, [f.k]: nv } }));
-                      };
-                      if (f.kind === "image") {
-                        return (
-                          <div key={f.k} className="row">
-                            <label className="label"><span>{f.label}</span></label>
-                            {val ? (
-                              <PhotoFramer src={val} slot={{ w: f.w, h: f.h }} pos={(e.photoPos || {})[f.posKey]}
-                                onChange={(pos) => { update(e.id, (x) => ({ ...x, photoPos: { ...(x.photoPos || {}), [f.posKey]: pos } })); setPage(`x-${e.id}`); }} />
-                            ) : <div className="hint">No picture.</div>}
-                            <div className="actions" style={{ marginTop: 6 }}>
-                              <label className="btn btn-ghost btn-small" style={{ cursor: "pointer" }}>
-                                {busy === e.id + f.k ? "Uploading…" : "Upload picture"}
-                                <input type="file" accept="image/*" style={{ display: "none" }} disabled={!!busy} onChange={(ev) => { upload(e, f, ev.target.files && ev.target.files[0]); ev.target.value = ""; }} />
-                              </label>
-                              {(p.sitePhotos || []).length ? (
-                                <select className="input" style={{ width: "auto" }} value="" onChange={(ev) => { if (ev.target.value) { setVal(ev.target.value); setPage(`x-${e.id}`); } }}>
-                                  <option value="">…or use a website photo</option>
-                                  {(p.sitePhotos || []).map((ph, i) => <option key={ph.url} value={ph.url}>Website photo {i + 1}</option>)}
-                                </select>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={f.k} className="row">
-                          <label className="label" htmlFor={`${e.id}-${f.k}`}><span>{f.label}</span>{f.max ? <Count value={val} max={f.max} /> : null}</label>
-                          {f.kind === "text"
-                            ? <input id={`${e.id}-${f.k}`} className="input" value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />
-                            : <textarea id={`${e.id}-${f.k}`} className="input" rows={f.kind === "lines" ? 4 : 5} value={val} spellCheck lang="en-GB" onFocus={() => setPage(`x-${e.id}`)} onChange={(ev) => setVal(ev.target.value)} />}
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-      {list.length ? <p className="hint" style={{ marginTop: 12 }}>Press <b>Save changes</b> to keep added pages with the proposal and its PDF.</p> : null}
     </>
   );
 }

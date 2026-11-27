@@ -269,8 +269,8 @@ export function StartFrom({ target, onPick }) {
 // Bullets are shown in the box as you type; pasted lists with "-", "*" or "•" are tidied.
 const BULLET = "\u2022 ";
 const stripBullet = (l) => l.replace(/^\s*(?:[\u2022\u25CF\u25AA\u2013\u2014*\-]|\d+[.)])\s?/, "");
-const showLines = (lines) => lines.map((l) => BULLET + l).join("\n");
-export function LinesBox({ label, path, p, set, setPage, page, max, each, placeholder, hint }) {
+const showLines = (lines) => lines.map((l) => (/^##\s/.test(l) ? l : BULLET + l)).join("\n");
+export function LinesBox({ label, path, p, set, setPage, page, max, each, placeholder, hint, subheads }) {
   const ref = useRef(null);
   const caret = useRef(null);
   const list = getIn(p, path) || [];
@@ -307,6 +307,55 @@ export function LinesBox({ label, path, p, set, setPage, page, max, each, placeh
       <textarea ref={ref} className="input" rows={Math.min(14, Math.max(5, list.length + 1))} value={value} spellCheck lang="en-GB" onFocus={() => setPage(page)}
         placeholder={`${BULLET}${placeholder} one\n${BULLET}Press Enter for the next one`} onChange={onChange} />
       <div className="hint">Press Enter to start a new bullet point. Up to {max}, {each} characters each.{hint ? " " + hint : ""}</div>
+      {subheads ? (
+        <div className="hint">
+          <button type="button" className="link" onClick={() => { if (list.filter((x) => String(x).trim()).length >= max) { limitHit(`${label} (one per line)`, max, max + 1); return; } set(path, [...list.filter((x, i) => String(x).trim() || i < list.length - 1), "## Subheading"]); setPage(page); }}>+ Add a subheading</button>
+          {" "}– shows in semibold above the bullet points under it, to split them into sections. Or start any line with <b>##</b> and a space.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// The picture for one page, shown inside that page's section of the form so it's chosen
+// before moving on. Website photos first (faded = too small for this spot), then ours, then upload.
+export function PhotoSlotPicker({ p, setP, slot, page, setPage, stock, fits, label }) {
+  const key = slot.key;
+  const pick = (url) => {
+    setP((cur) => ({ ...cur, [key]: url, photoPos: { ...(cur.photoPos || {}), [key]: undefined } }));
+    setPage(page);
+  };
+  const ok = fits || photoFits;
+  return (
+    <div className="row slot-pick">
+      <label className="label"><span>{label || `Picture: ${slot.label}`}</span></label>
+      <div className="photo-pick">
+        {(p.sitePhotos || []).map((ph) => {
+          const good = ok(ph, slot);
+          return (
+            <button key={ph.url} type="button" disabled={!good} title={good ? "From the client’s website" : "Too small for this spot"}
+              className={"thumb site" + (p[key] === ph.url ? " on" : "") + (good ? "" : " small")} onClick={() => pick(ph.url)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={ph.url} alt="" loading="lazy" />
+            </button>
+          );
+        })}
+        {(stock || []).map((src) => (
+          <button key={src} type="button" className={"thumb" + (p[key] === src ? " on" : "")} onClick={() => pick(src)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" loading="lazy" />
+          </button>
+        ))}
+        <label className="thumb upload" title="Upload a photo">
+          <input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files && e.target.files[0]; if (file) pick(await readImage(file)); e.target.value = ""; }} />
+          +
+        </label>
+      </div>
+      {p[key] ? (
+        <PhotoFramer src={p[key]} slot={slot} pos={(p.photoPos || {})[key]}
+          onChange={(pos) => { setP((cur) => ({ ...cur, photoPos: { ...(cur.photoPos || {}), [key]: pos } })); setPage(page); }} />
+      ) : null}
+      <div className="hint">Green dot = from the client’s website. Faded ones are too small for this spot and would look blurry.</div>
     </div>
   );
 }
